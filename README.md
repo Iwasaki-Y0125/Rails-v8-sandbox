@@ -4,7 +4,7 @@
 
 ## 検証項目
 
-1. Lindera+Sudachiで名詞抽出できるか
+1. Mecab(Natto)で名詞抽出できるか
 
 2. NTT極性辞書でスコア出せるか
 

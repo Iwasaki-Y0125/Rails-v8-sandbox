@@ -6,6 +6,9 @@ ARG NODE_MAJOR=22
 
 FROM ruby:${RUBY_VERSION}-slim
 
+ARG RUBY_VERSION
+ARG NODE_MAJOR
+
 # 環境設定
 ENV LANG=C.UTF-8 \
     TZ=Asia/Tokyo
@@ -36,6 +39,15 @@ RUN apt-get update -qq && apt-get install -y --no-install-recommends \
     curl \
     # 鍵（GPG）を扱う。ダウンロードした鍵を apt が使える形に変換するため。
     gnupg \
+    # ====================
+    #  MeCab（本体 + 開発ヘッダ + 辞書）
+    # ====================
+    mecab \
+    libmecab-dev \
+    mecab-ipadic-utf8 \
+    # ====================
+    #  Node.js
+    # ====================
     # Node.jsをいれるための前処理
     # NodeSourceの鍵をを置くディレクトリ
     && mkdir -p /etc/apt/keyrings \
@@ -43,7 +55,7 @@ RUN apt-get update -qq && apt-get install -y --no-install-recommends \
     && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
       | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
     # NodeSourceのaptリポジトリを追加
-    && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" \
+    && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_${NODE_MAJOR}.x nodistro main" \
       > /etc/apt/sources.list.d/nodesource.list \
     # リポジトリ追加後に update して nodejs をインストール
     && apt-get update -qq && apt-get install -y --no-install-recommends \
