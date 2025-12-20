@@ -13,3 +13,12 @@
 4. Solid Queueで解析を非同期にできるか
 
 5. Rails標準認証 + マジックリンク + メール
+
+## 構成
+2025-12-19 時点
+- Ruby: 3.4.8
+- Rails: 8.0.4
+- Node.js: 22
+- DB: PostgreSQL 17
+- Web server: Puma
+- Docker: multi-stage build
