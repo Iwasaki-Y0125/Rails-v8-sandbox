@@ -7,8 +7,8 @@ ARG NODE_MAJOR=22
 FROM ruby:${RUBY_VERSION}-slim
 
 # 環境設定
-ENV LANG C.UTF-8 \
-    TZ Asia/Tokyo
+ENV LANG=C.UTF-8 \
+    TZ=Asia/Tokyo
 
 # OSパッケージ導入　/ Node.js導入（npm同梱）
 # apt-get update -qq：aptのパッケージ一覧を更新
@@ -59,13 +59,13 @@ WORKDIR /app
 # => 差分があればbundle install
 # => 差分がなければ前回のコンテナキャッシュを利用
 COPY Gemfile ./
-COPY Gemfile.lock* ./
+COPY Gemfile.lock ./
 RUN bundle install
 
-# yarn設定（ dev用 ）
+# npm設定（ dev 用）
 # 開発時の初回エラー回避の構成
-COPY package.json* yarn.lock* ./
-RUN if [ -f package.json ]; then yarn install; fi
+COPY package.json* package-lock.json* ./
+RUN if [ -f package.json ]; then npm install; fi
 
 # Railsアプリのコードすべて（一個目の./ホスト側のカレントディレクトリ)を
 # コンテナ内(二個目の./コンテナ内のカレントディレクトリ)にコピー = コンテナに載せる
