@@ -1,0 +1,97 @@
+# ### デフォルトベースになる設定####################################
+default: &default
+  adapter: postgresql
+  encoding: unicode
+  # For details on connection pooling, see Rails configuration guide
+  # https://guides.rubyonrails.org/configuring.html#database-pooling
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+  username: postgres
+  password: <%= ENV.fetch("POSTGRES_PASSWORD", "password") %>
+  host: db
+  port: 5432
+
+# ### 開発用設定 ##################################################
+development:
+  <<: *default
+  #* NOTE: 基本は DATABASE_URL を使う。未設定時のフォールバック用。
+  database: app_development
+
+# 基本的にDATABASE_URLで渡すが、一応残しておく
+
+  # PostgreSQLにログインするユーザー名
+  # 空欄（未指定）なら OS のユーザー名と同じ名前のDBユーザーで繋ぐ
+  # Docker構成では postgres と明示するのがテンプレ
+  # username: postgres
+
+  # PostgreSQLにログインするパスワード設定
+  #password: <%= ENV["POSTGRES_PASSWORD"] %>
+
+  # DBサーバの場所（ホスト名/IP）
+  # Docker構成では host: db（composeのサービス名）にするのがテンプレ
+  #host: db
+
+  # ポート設定。何も設定しなければデフォルトは5432
+  #port: 5432
+
+  # PostgreSQLはDBの中に「schema（スキーマ）」という区画を設定できる
+  # 例：public（標準）、app、sharedなど
+  # どの順番で探すか（検索パス）を指定できる
+  #schema_search_path: myapp,sharedapp,public
+
+  # PostgreSQL側のログの頻度設定(notice / warning / error…)
+  #min_messages: notice
+
+
+# ### テスト設定 ##################################################
+
+# テストを走らせるときは、test用DBを毎回作り直したり消したりしている
+# test設定を消すとテスト時エラーになる。
+# !また、DB名を development や production と同じにすると、開発DBや本番DBを消してしまう事故になるので注意
+test:
+  <<: *default
+  database: app_test
+
+# ### production設定の説明 ########################################
+#
+# DATABASE_URLは特別な環境変数で、
+# Renderやdocker-compose.ymlなどで先に設定してあると
+# DATABASE_URLの情報にdatabase.ymlの情報を追加して接続します。
+# => DATABASE_URLの情報が優先されて、DATABASE_URL未設定の部分のみdatabase.ymlを読み込む
+#
+#   DATABASE_URL="postgres://myuser:mypass@localhost/somedatabase"
+#         書き方  postgres://username:password@host:port/database
+#
+# 複数DBでDBごとにサーバーを分けたい、権限を分けたいなどの場合に
+# DATABASE_URLの自動適用を避けるためには、以下の書き方でURLを設定する
+# production:
+#   primary:
+#     url: <%= ENV["PRIMARY_DATABASE_URL"] %>
+#   queue:
+#     url: <%= ENV["QUEUE_DATABASE_URL"] %>
+#
+# データベース接続設定の指定方法に関する詳細は、こちらの概要をご覧ください。
+# Read https://guides.rubyonrails.org/configuring.html#configuring-a-database
+#
+
+#* NOTE: 基本は DATABASE_URL を使う。database等は未設定時のフォールバック用。
+production:
+  # メインのDB
+  # &primary_production => ブロックをアンカー指定して他DBに使いまわす
+  primary: &primary_production
+    # default設定を読み込み
+    <<: *default
+    database: app_production
+    # !絶対にパスワードをソースコードに書かないでね。代わりに環境変数で渡そうね。これおじ。
+    password: <%= ENV["POSTGRES_PASSWORD"] %>
+  cache:
+    <<: *primary_production
+    database: app_production_cache
+    migrations_paths: db/cache_migrate
+  queue:
+    <<: *primary_production
+    database: app_production_queue
+    migrations_paths: db/queue_migrate
+  cable:
+    <<: *primary_production
+    database: app_production_cable
+    migrations_paths: db/cable_migrate

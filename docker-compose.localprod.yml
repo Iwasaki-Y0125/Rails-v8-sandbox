@@ -1,0 +1,43 @@
+# *ローカルでの本番環境検証用構成
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.localprod
+      # Dockerfileのruntime/Node.jsなしで起動
+      target: runtime
+
+    # DATABASE_URLの式展開が不安定になるのでファイルごと読み込み
+    env_file:
+      - .env.prod.local
+
+    environment:
+      TZ: Asia/Tokyo
+      RAILS_ENV: production
+      FORCE_SSL: "false"
+
+    ports:
+      - "3000:3000"
+
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:17
+    environment:
+      TZ: Asia/Tokyo
+      POSTGRES_DB: ${APP_NAME}_production
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres_data_prod:

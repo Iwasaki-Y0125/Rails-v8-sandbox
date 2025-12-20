@@ -1,0 +1,76 @@
+#* 開発用構成
+
+# バージョン管理
+ARG RUBY_VERSION=3.4.8
+ARG NODE_MAJOR=22
+
+FROM ruby:${RUBY_VERSION}-slim
+
+# 環境設定
+ENV LANG C.UTF-8 \
+    TZ Asia/Tokyo
+
+# OSパッケージ導入　/ Node.js導入（npm同梱）
+# apt-get update -qq：aptのパッケージ一覧を更新
+# apt-get install -y：対話なしでインストール
+# --no-install-recommends：おすすめパッケージを入れない → 余計な依存なしで軽量化
+RUN apt-get update -qq && apt-get install -y --no-install-recommends \
+    # Cコンパイラ一式
+    build-essential \
+    # Gemfileで Git から gem を取る場合に必要
+    git \
+    # PostgreSQL使う時に必須のCライブラリ（libpq）の 開発用ヘッダ
+    libpq-dev \
+    # psych(yaml読み込み)を使う時に必須の開発用ヘッダ(Rails8で必須)
+    libyaml-dev \
+    # nokogiri（HTML/XLMの組み立て）を使用するとき必須の開発用ヘッダ（一応）
+    libxml2-dev \
+    libxslt-dev \
+    # postgresqlのクライアントツール
+    postgresql-client \
+    # タイムゾーン設定
+    tzdata \
+    # HTTPS証明書ストア。これがないと https 経由のダウンロード（curl等）が失敗しやすい。
+    ca-certificates \
+    # NodeSource の鍵を取るのに使う。
+    curl \
+    # 鍵（GPG）を扱う。ダウンロードした鍵を apt が使える形に変換するため。
+    gnupg \
+    # Node.jsをいれるための前処理
+    # NodeSourceの鍵をを置くディレクトリ
+    && mkdir -p /etc/apt/keyrings \
+    # NodeSourceの署名鍵を取得して保存
+    && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
+      | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
+    # NodeSourceのaptリポジトリを追加
+    && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" \
+      > /etc/apt/sources.list.d/nodesource.list \
+    # リポジトリ追加後に update して nodejs をインストール
+    && apt-get update -qq && apt-get install -y --no-install-recommends \
+    nodejs \
+    # rm -rf /var/lib/apt/lists/*：aptのキャッシュ削除 → 軽量化
+    && rm -rf /var/lib/apt/lists/*
+
+# 作業ディレクトリの明示（Railsプロジェクトのルート）
+WORKDIR /app
+
+# Gemfile設定（ dev用 ）
+# GemfileとGemfile.lockをコンテナにコピー
+# => 差分があればbundle install
+# => 差分がなければ前回のコンテナキャッシュを利用
+COPY Gemfile ./
+COPY Gemfile.lock* ./
+RUN bundle install
+
+# yarn設定（ dev用 ）
+# 開発時の初回エラー回避の構成
+COPY package.json* yarn.lock* ./
+RUN if [ -f package.json ]; then yarn install; fi
+
+# Railsアプリのコードすべて（一個目の./ホスト側のカレントディレクトリ)を
+# コンテナ内(二個目の./コンテナ内のカレントディレクトリ)にコピー = コンテナに載せる
+COPY . .
+
+# Railsサーバーを起動する bin/rails server -b 0.0.0.0を実行
+# -b 0.0.0.0 でIP制限を外す（これがないとDockerコンテナは内部からしかアクセスできない）
+CMD ["bin/rails", "server", "-b", "0.0.0.0"]
