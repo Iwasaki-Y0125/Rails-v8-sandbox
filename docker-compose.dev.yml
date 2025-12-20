@@ -47,7 +47,6 @@ services:
       RAILS_ENV: development
       TZ: Asia/Tokyo
 
-
     # ブラウザからホストの3000番への要求 → Dockerコンテナの3000番へつなぐ
     ports:
       - "3000:3000"
