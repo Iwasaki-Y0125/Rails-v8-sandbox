@@ -108,6 +108,14 @@ GEM
     erubi (1.13.1)
     et-orbi (1.4.0)
       tzinfo
+    ffi (1.17.2-aarch64-linux-gnu)
+    ffi (1.17.2-aarch64-linux-musl)
+    ffi (1.17.2-arm-linux-gnu)
+    ffi (1.17.2-arm-linux-musl)
+    ffi (1.17.2-arm64-darwin)
+    ffi (1.17.2-x86_64-darwin)
+    ffi (1.17.2-x86_64-linux-gnu)
+    ffi (1.17.2-x86_64-linux-musl)
     fugit (1.12.1)
       et-orbi (~> 1.4)
       raabro (~> 1.4)
@@ -157,6 +165,8 @@ GEM
     minitest (6.0.0)
       prism (~> 1.5)
     msgpack (1.8.0)
+    natto (1.2.0)
+      ffi (>= 1.9.0)
     net-imap (0.6.2)
       date
       net-protocol
@@ -378,6 +388,7 @@ DEPENDENCIES
   importmap-rails
   jbuilder
   kamal
+  natto
   pg (~> 1.1)
   propshaft
   puma (>= 5.0)

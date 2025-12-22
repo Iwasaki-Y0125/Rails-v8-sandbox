@@ -63,6 +63,12 @@ RUN apt-get update -qq && apt-get install -y --no-install-recommends \
     # rm -rf /var/lib/apt/lists/*：aptのキャッシュ削除 → 軽量化
     && rm -rf /var/lib/apt/lists/*
 
+# Bundlerの保存先を確保（非root実行でも書けるようにする）
+RUN mkdir -p /usr/local/bundle \
+    && chown -R 1000:1000 /usr/local/bundle
+
+ENV BUNDLE_PATH=/usr/local/bundle
+
 # 作業ディレクトリの明示（Railsプロジェクトのルート）
 WORKDIR /app
 
