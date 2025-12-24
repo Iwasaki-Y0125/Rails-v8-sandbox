@@ -52,14 +52,14 @@ p nouns
 puts "-" * 60
 # ===============================================
 # urlを除去
-def strip_urls(text)
+def strip_url(text)
   text.gsub(%r{(?:https?://|www\.)\S+}, "")
 end
-strip_urls_text = strip_urls(text)
+strip_url_text = strip_urls(text)
 
 nouns = []
 
-nm.parse(strip_urls_text) do |n|
+nm.parse(strip_url_text) do |n|
   next if n.is_eos?
   parts = n.feature.split(",")
   pos   = parts[0]
