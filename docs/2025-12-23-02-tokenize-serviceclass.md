@@ -26,9 +26,17 @@
     touch app/services/mecab/analyzer.rb
     ```
 
+不足しているパッケージを確定させるために詳細ログ表示する方法
+```bash
+DOCKER_BUILDKIT=1 docker build --progress=plain -f Dockerfile.dev .
+```
 
 
 
 ## 参考
 - MeCab公式: https://taku910.github.io/mecab/
 - natto（GitHub）: https://github.com/buruzaemon/natto
+- mecab-ipadic-neologd(GitHub):
+ https://github.com/neologd/mecab-ipadic-neologd
+- Manpages of manpages-ja in Debian testing : https://manpages.debian.org/testing/manpages-ja/index.html
+- Docker ドキュメント日本語化プロジェクト(RUN) :https://docs.docker.jp/develop/develop-images/dockerfile_best-practices.html#run
