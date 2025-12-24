@@ -7,16 +7,16 @@
 
 # MeCabのfeatureの各要素のメモ
 # IPA辞書の場合
-    # surface:   n.surface,  # 表層形(実際の文字列)
-    # pos:       parts[0],   # 品詞
-    # pos1:      parts[1],   # 品詞細分類1
-    # pos2:      parts[2],   # 品詞細分類2
-    # pos3:      parts[3],   # 品詞細分類3
-    # conj_type: parts[4],   # 活用型
-    # conj_form: parts[5],   # 活用形
-    # base:      parts[6],   # 原形
-    # read:      parts[7],   # 読み
-    # pron:      parts[8],   # 発音
+# surface:   n.surface,  # 表層形(実際の文字列)
+# pos:       parts[0],   # 品詞
+# pos1:      parts[1],   # 品詞細分類1
+# pos2:      parts[2],   # 品詞細分類2
+# pos3:      parts[3],   # 品詞細分類3
+# conj_type: parts[4],   # 活用型
+# conj_form: parts[5],   # 活用形
+# base:      parts[6],   # 原形
+# read:      parts[7],   # 読み
+# pron:      parts[8],   # 発音
 
 require "bundler/setup"
 require "natto"
@@ -50,7 +50,7 @@ module Mecab
           conj_form: parts[5],   # 活用形
           base:      parts[6],   # 原形
           read:      parts[7],   # 読み
-          pron:      parts[8],   # 発音
+          pron:      parts[8]   # 発音
         }
       end
       tokens

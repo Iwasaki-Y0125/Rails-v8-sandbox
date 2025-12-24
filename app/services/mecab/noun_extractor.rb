@@ -11,7 +11,6 @@ module Mecab
       nouns = []
 
       @analyzer.tokens(text).each do |t|
-
         # 品詞が名詞ではなければ除外
         next unless t[:pos] == "名詞"
 
