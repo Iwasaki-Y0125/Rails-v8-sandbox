@@ -1,0 +1,65 @@
+# frozen_string_literal: true
+
+# 動作確認 ==============================
+# $ make exec
+# $ ruby script/mecab_tokens_cases.rb > tmp/mecab_tokens_cases.log
+# ======================================
+
+# MeCabのfeatureの各要素のメモ
+# IPA辞書の場合
+# surface:   n.surface,  # 表層形(実際の文字列)
+# pos:       parts[0],   # 品詞
+# pos1:      parts[1],   # 品詞細分類1
+# pos2:      parts[2],   # 品詞細分類2
+# pos3:      parts[3],   # 品詞細分類3
+# conj_type: parts[4],   # 活用型
+# conj_form: parts[5],   # 活用形
+# base:      parts[6],   # 原形
+# read:      parts[7],   # 読み
+# pron:      parts[8],   # 発音
+
+require "bundler/setup"
+require "natto"
+
+module Mecab
+  class Analyzer
+    # 解析用のMeCabオブジェクトを初期化(引数でオプション指定可能)
+    # 使いまわしすることでパフォーマンス向上
+    def initialize(mecab_args: nil)
+      @nm = mecab_args ? Natto::MeCab.new(mecab_args) : Natto::MeCab.new
+    end
+
+    # text -> token配列へ変換
+    def tokens(input_text)
+      input_text = input_text.to_s
+      pre_mecab_text = strip_url(input_text)
+
+      tokens = []
+
+      @nm.parse(pre_mecab_text) do |n|
+        next if n.is_eos?
+        parts   = n.feature.split(",")
+        tokens << {
+          surface:   n.surface,  # 表層形(実際の文字列)
+          feature:   n.feature,  # 生のfeature（デバッグ用）
+          pos:       parts[0],   # 品詞
+          pos1:      parts[1],   # 品詞細分類1
+          pos2:      parts[2],   # 品詞細分類2
+          pos3:      parts[3],   # 品詞細分類3
+          conj_type: parts[4],   # 活用型
+          conj_form: parts[5],   # 活用形
+          base:      parts[6],   # 原形
+          read:      parts[7],   # 読み
+          pron:      parts[8]   # 発音
+        }
+      end
+      tokens
+    end
+
+    private
+
+    def strip_url(input_text)
+      input_text.gsub(%r{(?:https?://|www\.)\S+}, "")
+    end
+  end
+end

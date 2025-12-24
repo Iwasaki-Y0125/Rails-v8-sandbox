@@ -70,7 +70,8 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     permissions:
-      contents: write   # push するために必要
+      contents: read    # コードをチェックアウトするために必要
+    # contents: write   # push するために必要 （自動修正を有効にした場合）
 
     steps:
       - name: Checkout code
@@ -84,30 +85,32 @@ jobs:
           ruby-version: .ruby-version
           bundler-cache: true
 
-      # Lint自動修正(プルリクエスト時のみ)
-      - name: Rubocop auto-correct
-        if: github.event_name == 'pull_request'
-        run: bin/rubocop -A
+      # !自動修正されると全ファイルがdiffコミットになるため要修正
+      # # Lint自動修正(プルリクエスト時のみ)
+      # - name: Rubocop auto-correct
+      #   if: github.event_name == 'pull_request'
+      #   run: bin/rubocop -A
 
 
-      - name: Commit and push changes (if any)
-        if: github.event_name == 'pull_request'
-        # if分岐: 自動修正後コミット差分があるか
-        # コミット差分がなければLintOKなので処理終了
-        # コミット差分があればgit config以下のコマンドで自動修正結果をPRにpush
-        # github-actions[bot] => GitHubが用意しているボットの表示名としてよく使われるダミーネーム
-        # github.head_ref は「PR元ブランチ名」
-        run: |
-          if git diff --quiet; then
-            echo "No changes"
-            exit 0
-          fi
+      # - name: Commit and push changes (if any)
+      #   if: github.event_name == 'pull_request'
+      #   # if分岐: 自動修正後コミット差分があるか
+      #   # コミット差分がなければLintOKなので処理終了
+      #   # コミット差分があればgit config以下のコマンドで自動修正結果をPRにpush
+      #   # github-actions[bot] => GitHubが用意しているボットの表示名としてよく使われるダミーネーム
+      #   # github.head_ref は「PR元ブランチ名」
+      #   run: |
+      #     if git diff --quiet; then
+      #       echo "No changes"
+      #       exit 0
+      #     fi
 
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "chore: auto-correct rubocop offenses"
-          git push origin HEAD:${{ github.head_ref }}
+      #     git config user.name "github-actions[bot]"
+      #     git config user.email "github-actions[bot]@users.noreply.github.com"
+      #     git add -A
+      #     git commit -m "chore: auto-correct rubocop offenses"
+      #     git push origin HEAD:${{ github.head_ref }}
+      # !ここまで === 自動修正されると全ファイルがdiffコミットになるため要修正
 
       # 最終チェックとして rubocopを実行(-Aで自動修正されなかったエラーがあればCIが落ちる)
       - name: Lint code for consistent style
