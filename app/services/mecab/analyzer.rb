@@ -26,7 +26,22 @@ module Mecab
     # 解析用のMeCabオブジェクトを初期化(引数でオプション指定可能)
     # 使いまわしすることでパフォーマンス向上
     def initialize(mecab_args: nil)
-      @nm = mecab_args ? Natto::MeCab.new(mecab_args) : Natto::MeCab.new
+      # MeCabの辞書ディレクトリのパスを取得
+      # 例：/usr/lib/x86_64-linux-gnu/mecab/dic
+      dicdir   = `mecab-config --dicdir`.strip
+      # File.join(a, b) は パスを安全に結合するRuby標準の関数。
+      # 例：/usr/lib/x86_64-linux-gnu/mecab/dic/mecab-ipadic-neologd
+      base_dic = File.join(dicdir, "mecab-ipadic-neologd")
+      # Rails.root = Railsアプリのルートディレクトリ
+      # 例： /app/mecab_userdic/user.dic
+      user_dic = Rails.root.join("mecab_userdic/user.dic").to_s
+
+      args = []
+      args << "-d #{base_dic}"
+      args << "-u #{user_dic}" if File.exist?(user_dic)
+      args << mecab_args if mecab_args
+
+      @nm = Natto::MeCab.new(args.join(" "))
     end
 
     # text -> token配列へ変換
