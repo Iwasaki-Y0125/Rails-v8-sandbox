@@ -40,3 +40,4 @@ DOCKER_BUILDKIT=1 docker build --progress=plain -f Dockerfile.dev .
  https://github.com/neologd/mecab-ipadic-neologd
 - Manpages of manpages-ja in Debian testing : https://manpages.debian.org/testing/manpages-ja/index.html
 - Docker ドキュメント日本語化プロジェクト(RUN) :https://docs.docker.jp/develop/develop-images/dockerfile_best-practices.html#run
+- 日本語の形態素解析以外にもMeCabを使う、またはMeCabの辞書の仕組み : https://diary.hatenablog.jp/entry/2017/02/04/204344
