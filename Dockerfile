@@ -7,6 +7,14 @@
 # 実行環境ではNode.jsなしで脆弱性リスク軽減
 ############################
 
+# 2025-12-26追記
+############################
+# Mecab導入メモ
+# build ステージで MeCab + NEologd + user.dic を作る
+# runtime ステージは最小で MeCab 本体だけ apt で入れる
+# 辞書ファイルは build から COPY
+############################
+
 # バージョン管理
 ARG RUBY_VERSION=3.4.8
 ARG NODE_MAJOR=22
@@ -31,6 +39,8 @@ ENV RAILS_ENV="production" \
     BUNDLE_PATH="/usr/local/bundle" \
     # developmentとtestグループのGemはインストールしない
     BUNDLE_WITHOUT="development test" \
+    # natto が libmecab.so を見つけられるようにする
+    MECAB_PATH=/usr/lib/x86_64-linux-gnu/libmecab.so.2 \
     # 環境設定
     LANG=C.UTF-8 \
     TZ=Asia/Tokyo
@@ -50,7 +60,7 @@ ARG NODE_MAJOR
 RUN apt-get update -qq && apt-get install -y --no-install-recommends \
     # Cコンパイラ一式
     build-essential \
-    # psych(yaml読み込み)を使う時に必須の開発用ヘッダ(devだが本番でも必須)
+    # psych(yaml読み込み)を使う時に必須の開発用ヘッダ(Rails8で本番でも必須)
     libyaml-dev \
     # Gemfileで Git から gem を取る場合に必要
     git \
@@ -59,12 +69,40 @@ RUN apt-get update -qq && apt-get install -y --no-install-recommends \
     # HTTPS証明書ストア。これがないと https 経由のダウンロード（curl等）が失敗しやすい。
     ca-certificates \
     # NodeSource の鍵を取るのに使う。
+    # ====================
+    # Node.js 関連
+    # ====================
     curl \
     # 鍵（GPG）を扱う。ダウンロードした鍵を apt が使える形に変換するため。
     gnupg \
     # Node.jsをいれるための前処理
     # NodeSourceの鍵をを置くディレクトリ
-    && mkdir -p /etc/apt/keyrings \
+    # ====================
+    #  MeCab（本体 + 補助コマンド + 開発ヘッダ + IPA辞書）
+    # ====================
+    mecab \
+    libmecab-dev \
+    mecab-ipadic-utf8 \
+    mecab-utils \
+    mecab-ipadic \
+    libmecab2 \
+    # ====================
+    # NEologdのインストールに必要な追加パッケージ群
+    # ====================
+    # .xz 形式で圧縮された辞書データやコーパスを展開するため
+    xz-utils \
+    # ファイルにパッチを当てる（NEologd のセットアップで辞書定義やビルド用ファイルに修正を当てる工程がある）
+    patch \
+    # ファイル種別を判定するコマンド。インストーラが「これは何のファイルか」を確認するのに使うことがある。
+    file \
+  && rm -rf /var/lib/apt/lists/*
+
+# ====================
+#  Node.js
+# ====================
+    # Node.jsをいれるための前処理
+    # NodeSourceの鍵をを置くディレクトリ
+RUN mkdir -p /etc/apt/keyrings \
     # NodeSourceの署名鍵を取得して保存
     && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
     | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
@@ -76,6 +114,64 @@ RUN apt-get update -qq && apt-get install -y --no-install-recommends \
     # rm -rf /var/lib/apt/lists/*：aptのキャッシュ削除 → 軽量化
     && rm -rf /var/lib/apt/lists/*
 
+# ====================
+#  NEologdのインストール
+#  NEologdは重くたまに失敗するので5回までリトライする
+# ====================
+# set -eux: Dockerビルドのデバッグをしやすくする定番セット
+# -e:エラー時に即座に終了 -u:未定義の変数を使ったらエラー -x:実行するコマンドをログに全部出力
+RUN set -eux; \
+  # NEologdのインストールを最大5回までリトライ
+  for i in 1 2 3 4 5; do \
+    # 毎回クローンキャッシュを削除してから実行
+    rm -rf /tmp/mecab-ipadic-neologd; \
+    # NEologdのGitクローン(公式手順に準拠) --depth 1: 履歴を1つだけにして軽量化
+    if git clone --depth 1 https://github.com/neologd/mecab-ipadic-neologd.git /tmp/mecab-ipadic-neologd && \
+    # インストールを実行(公式手順に準拠)
+    # -y:全てyesで実行
+    # -n: ログからインストーラの更新/更新チェック挙動に関わるオプションっぽい、詳細不明
+      /tmp/mecab-ipadic-neologd/bin/install-mecab-ipadic-neologd -n -y; then \
+      rm -rf /tmp/mecab-ipadic-neologd; \
+      # RUN ステップを成功で終了
+      exit 0; \
+    fi; \
+    # >&2: 標準エラー出力にメッセージを出す
+    echo "NEologd install failed. retry=${i}" >&2; \
+    # バックオフ戦略: リトライ毎に待機時間を長くする(混雑や一時障害に強い)
+    # 例: 1回目=10秒, 2回目=20秒, 3回目=30秒...
+    sleep $((i*10)); \
+  # forループここまで
+  # 5回リトライしても成功しなかった場合の処理
+  done; \
+  echo "NEologd install failed after retries" >&2; \
+  # exit 1：RUNステップが失敗 → Dockerビルド全体が失敗
+  exit 1
+
+# ====================
+#  NEologd辞書の退避 + user.dic 生成
+# ====================
+
+# user辞書ソースだけ先にコピー
+COPY mecab_userdic/user.csv ./mecab_userdic/user.csv
+
+RUN set -eux; \
+  # パスブレを防ぐために変数に格納
+  # MeCabの"辞書ディレクトリ"を取得
+  DICDIR="$(mecab-config --dicdir)"; \
+  # MeCabの“実行補助コマンド置き場”を取得
+  LIBEXECDIR="$(mecab-config --libexecdir)"; \
+  # mecab-dict-index コマンドのパスを変数にセット
+  MECAB_DICT_INDEX="${LIBEXECDIR}/mecab-dict-index"; \
+  mkdir -p /opt/mecab-dic; \
+  # NEologd辞書を固定パスへ退避
+  cp -a "${DICDIR}/mecab-ipadic-neologd" /opt/mecab-dic/; \
+  # user.csv から user.dic を生成
+  "${MECAB_DICT_INDEX}" \
+    -d "${DICDIR}/mecab-ipadic-neologd" \
+    -u /opt/mecab-dic/user.dic \
+    -f utf-8 -t utf-8 \
+    /rails/mecab_userdic/user.csv
+
 # Install application gems
 COPY Gemfile Gemfile.lock ./
 RUN bundle install && \
@@ -83,9 +179,10 @@ RUN bundle install && \
     rm -rf ~/.bundle/ "${BUNDLE_PATH}"/ruby/*/cache "${BUNDLE_PATH}"/ruby/*/bundler/gems/*/.git && \
     bundle exec bootsnap precompile --gemfile
 
-# npm設定（本番 build 用）
-COPY package.json package-lock.json ./
-RUN npm ci && npm cache clean --force
+# !todo: npm導入後コメントアウト解除
+# # npm設定（本番 build 用）
+# COPY package.json package-lock.json ./
+# RUN npm ci && npm cache clean --force
 
 # Railsアプリのコードすべて（一個目の./ホスト側のカレントディレクトリ)を
 # コンテナ内(二個目の./コンテナ内のカレントディレクトリ)にコピー = コンテナに載せる
@@ -96,8 +193,11 @@ COPY . .
 RUN bundle exec bootsnap precompile app/ lib/
 
 # SECRET_KEY_BASE_DUMMY=1　=> 本番用の秘密情報なしで、アセットプリコンパイルしてOKというフラグ
-# !↓がないと、本物のSECRET_KEY_BASEがビルド時に渡されて、ビルドログやイメージレイヤーに残り、秘密情報が漏洩するリスクがある
+# !↑がないと、本物のSECRET_KEY_BASEがビルド時に渡されて、ビルドログやイメージレイヤーに残り、秘密情報が漏洩するリスクがある
 RUN SECRET_KEY_BASE_DUMMY=1 ./bin/rails assets:precompile
+
+# Node.jsがビルト時に存在するかチェック
+RUN node -v
 
 ############################
 # 3) runtime（実行専用：Nodeなし）
@@ -109,11 +209,35 @@ RUN apt-get update -qq && apt-get install -y --no-install-recommends \
     postgresql-client \
     tzdata \
     ca-certificates \
+    # ====================
+    #  MeCab（本体 + ランタイムライブラリ）
+    # ====================
+    mecab \
+    libmecab2 \
     && rm -rf /var/lib/apt/lists/*
+
+# natto が libmecab.so を見つけられるようにする
+ENV MECAB_PATH=/usr/lib/x86_64-linux-gnu/libmecab.so.2
 
 # build時の成果物をコピー（gems + アプリ + 生成済みassets）
 COPY --from=build "${BUNDLE_PATH}" "${BUNDLE_PATH}"
 COPY --from=build /rails /rails
+
+# =========================================
+#  ipadic-neologd + user.dic の配置
+
+# MeCab辞書の配置先を作成
+RUN mkdir -p /usr/local/lib/mecab/dic
+
+# buildで退避した辞書をruntimeへコピー
+COPY --from=build /opt/mecab-dic/mecab-ipadic-neologd \
+  /usr/local/lib/mecab/dic/mecab-ipadic-neologd
+
+COPY --from=build /opt/mecab-dic/user.dic \
+/usr/local/lib/mecab/dic/user.dic
+
+# ipadic-neologd + user.dicの処理ここまで=========
+
 
 # 非rootで動かす => 本番環境は一般ユーザーで動かす
 # rails(ID 1000)というLinuxグループを作る
@@ -129,5 +253,6 @@ USER 1000:1000
 # docker-entrypoint　=> DBを使える状態にしてからRails起動するコマンドが書いてある
 ENTRYPOINT ["/rails/bin/docker-entrypoint"]
 
-# Start server via Thruster by default, this can be overwritten at runtime
+# 本番検証用のポート/サーバー指定
+EXPOSE 3000
 CMD ["bundle", "exec", "puma", "-C", "config/puma.rb"]
