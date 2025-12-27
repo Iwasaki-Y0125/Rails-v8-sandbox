@@ -109,6 +109,9 @@ logs-db:
 exec:
 	$(DEV) exec $(OPTS) web bash
 
+lprod-exec:
+	$(LPROD) exec $(OPTS) web bash
+
 # railsコンソール起動
 rails-c:
 	$(DEV) exec $(OPTS) web $(RAILS) c

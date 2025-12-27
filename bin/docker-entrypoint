@@ -1,14 +1,37 @@
 #!/bin/bash -e
+# "#!/bin/bash":このファイルをbashで実行することを指定
+# "-e":コマンドが失敗した場合にスクリプトを終了するオプション
+# =>準備処理が失敗したら、Rails起動に進まずにコンテナ起動を失敗させる
 
-# Enable jemalloc for reduced memory usage and latency.
+# jemallocを有効化 (メモリ使用量とレイテンシを削減)
 if [ -z "${LD_PRELOAD+x}" ]; then
     LD_PRELOAD=$(find /usr/lib -name libjemalloc.so.2 -print -quit)
     export LD_PRELOAD
 fi
 
-# If running the rails server then create or migrate existing database
+# 起動コマンドが ./bin/rails server のときだけ db:prepare を先に実行
 if [ "${@: -2:1}" == "./bin/rails" ] && [ "${@: -1:1}" == "server" ]; then
   ./bin/rails db:prepare
 fi
 
+# Dockerfileで下記のようにCMDが指定されている場合、そのコマンドがここに渡される
+# ENTRYPOINT ["/rails/bin/docker-entrypoint"]
+# CMD ["bundle", "exec", "puma", "-C", "config/puma.rb"]
+# =>  "bundle exec puma -C config/puma.rb" を実行
 exec "${@}"
+
+
+
+# ===================
+# docker-entrypointとは
+# Dockerコンテナ起動時に実行されるスクリプト
+# コンテナ内での初期設定や環境変数の設定、サービスの起動などを行う
+
+# ENTRYPOINT命令で指定され、コンテナ起動時に自動的に実行される
+# 例えば、データベースのマイグレーションや初期データの投入などを行うことが多い
+# これにより、コンテナが起動するたびに必要な設定が自動的に適用される
+
+# *なお、entrypointはruntime側で実行されるのでビルド前に必要な処理は書かないように注意。
+
+# 参考: https://docs.docker.jp/engine/reference/builder.html#entrypoint
+# ===================

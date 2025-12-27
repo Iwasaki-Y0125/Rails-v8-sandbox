@@ -50,7 +50,7 @@ RUN apt-get update -qq && apt-get install -y --no-install-recommends \
     # 鍵（GPG）を扱う。ダウンロードした鍵を apt が使える形に変換するため。
     gnupg \
     # ====================
-    #  MeCab（本体 + 開発ヘッダ + IPA辞書）
+    #  MeCab（本体 + 補助コマンド + 開発ヘッダ + IPA辞書）
     # ====================
     mecab \
     libmecab-dev \
