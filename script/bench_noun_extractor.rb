@@ -66,5 +66,5 @@ puts({
   avg_ms: ms(avg).round(3),
   median_ms: ms(median).round(3),
   p95_ms: ms(p95).round(3),
-  p99_ms: ms(p99).round(3),
+  p99_ms: ms(p99).round(3)
 }.to_json)
