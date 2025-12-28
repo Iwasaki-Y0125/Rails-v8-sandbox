@@ -91,6 +91,8 @@ RUN mkdir -p /etc/apt/keyrings \
 #  NEologdのインストール
 #  NEologdは重くたまに失敗するので5回までリトライする
 # ====================
+ENV MECAB_DICDIR=/opt/mecab-dic/neologd
+
 # set -eux: Dockerビルドのデバッグをしやすくする定番セット
 # -e:エラー時に即座に終了 -u:未定義の変数を使ったらエラー -x:実行するコマンドをログに全部出力
 RUN set -eux; \
@@ -100,11 +102,18 @@ RUN set -eux; \
     rm -rf /tmp/mecab-ipadic-neologd; \
     # NEologdのGitクローン(公式手順に準拠) --depth 1: 履歴を1つだけにして軽量化
     if git clone --depth 1 https://github.com/neologd/mecab-ipadic-neologd.git /tmp/mecab-ipadic-neologd && \
+      \
       # インストールを実行(公式手順に準拠)
       # -y:全てyesで実行
       # -n: ログからインストーラの更新/更新チェック挙動に関わるオプションっぽい、詳細不明
       /tmp/mecab-ipadic-neologd/bin/install-mecab-ipadic-neologd -n -y; then \
       rm -rf /tmp/mecab-ipadic-neologd; \
+      \
+      # インストール成功後、NEologd辞書を固定パスにコピーして退避
+      mkdir -p "$(dirname "${MECAB_DICDIR}")"; \
+      rm -rf "${MECAB_DICDIR}"; \
+      cp -a "$(mecab-config --dicdir)/mecab-ipadic-neologd" "${MECAB_DICDIR}"; \
+      test -f "${MECAB_DICDIR}/dicrc"; \
       # RUN ステップを成功で終了
       exit 0; \
     fi; \
@@ -119,6 +128,34 @@ RUN set -eux; \
   echo "NEologd install failed after retries" >&2; \
   # exit 1：RUNステップが失敗 → Dockerビルド全体が失敗
   exit 1
+
+# ====================
+#  日本語評価極性辞書（名詞編 + 用言編）の取得（dev用）
+#  参照: 東北大 乾・岡崎研究室 公開辞書
+# ====================
+ENV SENTIMENT_LEX_DIR=/opt/sentiment_lex
+
+RUN set -eux; \
+  mkdir -p "${SENTIMENT_LEX_DIR}"; \
+  for i in 1 2 3 4 5; do \
+    rm -f "${SENTIMENT_LEX_DIR}/wago.121808.pn" "${SENTIMENT_LEX_DIR}/pn.csv.m3.120408.trim"; \
+    if \
+      curl -fsSL --retry 3 --retry-delay 5 --retry-all-errors \
+        -o "${SENTIMENT_LEX_DIR}/wago.121808.pn" \
+        "https://www.cl.ecei.tohoku.ac.jp/resources/sent_lex/wago.121808.pn" \
+      && \
+      curl -fsSL --retry 3 --retry-delay 5 --retry-all-errors \
+        -o "${SENTIMENT_LEX_DIR}/pn.csv.m3.120408.trim" \
+        "https://www.cl.ecei.tohoku.ac.jp/resources/sent_lex/pn.csv.m3.120408.trim"; \
+    then \
+      break; \
+    fi; \
+    echo "Japanese Sentiment Dictionary download failed. retry=${i}" >&2; \
+    sleep $((i*10)); \
+  done; \
+  test -s "${SENTIMENT_LEX_DIR}/wago.121808.pn"; \
+  test -s "${SENTIMENT_LEX_DIR}/pn.csv.m3.120408.trim"
+
 
 # Bundlerの保存先を確保（非root実行でも書けるようにする）
 RUN mkdir -p /usr/local/bundle \
