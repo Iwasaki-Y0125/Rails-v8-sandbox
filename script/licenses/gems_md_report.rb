@@ -14,7 +14,7 @@ def licenses_of(spec)
     if spec.respond_to?(:licenses) && spec.licenses&.any?
       spec.licenses
     elsif spec.respond_to?(:license) && spec.license
-      [spec.license]
+      [ spec.license ]
     else
       []
     end
@@ -35,7 +35,7 @@ puts "|---|---:|---|---|"
 
 specs.each do |spec|
   lic = licenses_of(spec)
-  lic = ["(unknown)"] if lic.empty?
+  lic = [ "(unknown)" ] if lic.empty?
 
   name = spec.name
   ver  = spec.version.to_s
