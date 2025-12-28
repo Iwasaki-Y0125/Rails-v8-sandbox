@@ -22,3 +22,6 @@
 - DB: PostgreSQL 17
 - Web server: Puma
 - Docker: multi-stage build
+
+## Licenses / Third-party notices
+See `docs/third_party_notices.md`.

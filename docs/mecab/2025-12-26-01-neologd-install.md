@@ -24,25 +24,47 @@
 
 2. Dockerfile.dev にNEologd のインストール処理を追加
 
-    ※NEologd はインストールが重く、GitHub 側の混雑などで失敗することがあるため、最大5回までリトライする。
+    - NEologd はインストールが重く、GitHub 側の混雑などで失敗することがあるため、最大5回までリトライする。
+    - 【2025-12-28追記】NEologd辞書を固定パスにコピーして退避処理を追記
+
     ```dockerfile
-    # ====================
-    #  NEologdのインストール
-    #  NEologdは重くたまに失敗するので5回までリトライする
-    # ====================
+    ENV MECAB_DICDIR=/opt/mecab-dic/neologd
+
+    # set -eux: Dockerビルドのデバッグをしやすくする定番セット
+    # -e:エラー時に即座に終了 -u:未定義の変数を使ったらエラー -x:実行するコマンドをログに全部出力
     RUN set -eux; \
-    for i in 1 2 3 4 5; do \
-    rm -rf /tmp/mecab-ipadic-neologd; \
-    if git clone --depth 1 https://github.com/neologd/mecab-ipadic-neologd.git /tmp/mecab-ipadic-neologd && \
-      /tmp/mecab-ipadic-neologd/bin/install-mecab-ipadic-neologd -n -y; then \
-      rm -rf /tmp/mecab-ipadic-neologd; \
-      exit 0; \
-    fi; \
-    echo "NEologd install failed. retry=${i}" >&2; \
-    sleep $((i*10)); \
-    done; \
-    echo "NEologd install failed after retries" >&2; \
-    exit 1
+      # NEologdのインストールを最大5回までリトライ
+      for i in 1 2 3 4 5; do \
+        # 毎回クローンキャッシュを削除してから実行
+        rm -rf /tmp/mecab-ipadic-neologd; \
+        # NEologdのGitクローン(公式手順に準拠) --depth 1: 履歴を1つだけにして軽量化
+        if git clone --depth 1 https://github.com/neologd/mecab-ipadic-neologd.git /tmp/mecab-ipadic-neologd && \
+          \
+          # インストールを実行(公式手順に準拠)
+          # -y:全てyesで実行
+          # -n: ログからインストーラの更新/更新チェック挙動に関わるオプションっぽい、詳細不明
+          /tmp/mecab-ipadic-neologd/bin/install-mecab-ipadic-neologd -n -y; then \
+          rm -rf /tmp/mecab-ipadic-neologd; \
+          \
+          # インストール成功後、NEologd辞書を固定パスにコピーして退避
+          mkdir -p "$(dirname "${MECAB_DICDIR}")"; \
+          rm -rf "${MECAB_DICDIR}"; \
+          cp -a "$(mecab-config --dicdir)/mecab-ipadic-neologd" "${MECAB_DICDIR}"; \
+          test -f "${MECAB_DICDIR}/dicrc"; \
+          # RUN ステップを成功で終了
+          exit 0; \
+        fi; \
+        # >&2: 標準エラー出力にメッセージを出す
+        echo "NEologd install failed. retry=${i}" >&2; \
+        # バックオフ戦略: リトライ毎に待機時間を長くする(混雑や一時障害に強い)
+        # 例: 1回目=10秒, 2回目=20秒, 3回目=30秒...
+        sleep $((i*10)); \
+      # forループここまで
+      # 5回リトライしても成功しなかった場合の処理
+      done; \
+      echo "NEologd install failed after retries" >&2; \
+      # exit 1：RUNステップが失敗 → Dockerビルド全体が失敗
+      exit 1
     ```
 
 3. ビルド

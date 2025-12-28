@@ -26,12 +26,17 @@ module Mecab
     # 解析用のMeCabオブジェクトを初期化(引数でオプション指定可能)
     # 使いまわしすることでパフォーマンス向上
     def initialize(mecab_args: nil)
-      # MeCabの辞書ディレクトリのパスを取得
-      # 例：/usr/lib/x86_64-linux-gnu/mecab/dic
-      dicdir   = `mecab-config --dicdir`.strip
+      # 1) MeCab辞書ディレクトリ（NEologd）を決める
+      # 優先: ENV（Docker側で固定パスに退避する想定）
+      # フォールバック: mecab-config --dicdir から推測
+      base_dic =
+      ENV["MECAB_DICDIR"].presence ||
+      begin
+        dicdir = `mecab-config --dicdir`.strip
+        File.join(dicdir, "mecab-ipadic-neologd")
+      end
       # File.join(a, b) は パスを安全に結合するRuby標準の関数。
-      # 例：/usr/lib/x86_64-linux-gnu/mecab/dic/mecab-ipadic-neologd
-      base_dic = File.join(dicdir, "mecab-ipadic-neologd")
+
       # Rails.root = Railsアプリのルートディレクトリ
       # 例： /app/mecab_userdic/user.dic
       user_dic = Rails.root.join("mecab_userdic/user.dic").to_s

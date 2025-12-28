@@ -1,4 +1,4 @@
-.PHONY: ch dev dev-build dev-build-nocache lprod lprod-build lprod-build-nocache down lp-down clean ps logs logs-web logs-db exec rails-c g-migr db-migrate db-prepare db-reset db-first lg-migr ldb-migrate ldb-prepare ldb-reset g-con g-model rspec rubocop rubocop-a
+.PHONY: ch dev dev-build dev-build-nocache lprod lprod-build lprod-build-nocache down lp-down clean ps logs logs-web logs-db exec rails-c bundle-install license-finder g-migr db-migrate db-prepare db-reset db-first lg-migr ldb-migrate ldb-prepare ldb-reset g-con g-model rspec rubocop rubocop-a
 
 # constants
 OPTS   := -e HOME=/tmp --user $(shell id -u):$(shell id -g)
@@ -116,6 +116,13 @@ lprod-exec:
 rails-c:
 	$(DEV) exec $(OPTS) web $(RAILS) c
 
+# Gemインストール
+bundle-install:
+	$(DEV) exec -u root web bundle install
+
+# ライセンスレポート発行
+license-report-md:
+	$(DEV) exec $(OPTS) web $(BUNDLE) ruby script/licenses/gems_md_report.rb > docs/licenses/gems.md
 
 # ====================
 # DB操作(開発用)
