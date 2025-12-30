@@ -35,7 +35,7 @@ module Sentiment
       scored_tokens = []
       tokens.each_with_index do |t, i|
         next unless @target_pos.include?(t[:pos])
-        scored_tokens << [t, i]
+        scored_tokens << [ t, i ]
       end
 
       # hits : 評価語（1トークン1件）
@@ -152,7 +152,6 @@ module Sentiment
 
           # 一番近い語で反転出来たら即離脱
           break
-
         end
       end
     end
