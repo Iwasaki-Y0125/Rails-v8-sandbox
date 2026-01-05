@@ -76,7 +76,7 @@ module Sentiment
           s = @wago.score_terms(terms)
           next if s.nil?
 
-          matched = [terms, s, len]
+          matched = [ terms, s, len ]
 
           # より短い候補は試さずループを抜ける
           break
