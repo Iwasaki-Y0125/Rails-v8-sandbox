@@ -2,7 +2,7 @@
 
 # 動作確認 ==============================
 # $ make exec
-# まずは軽く:
+# ターミナルで確認:
 #   $ bin/rails runner script/sentiment_test_score_cases.rb
 #
 # 結果をログに吐く:
