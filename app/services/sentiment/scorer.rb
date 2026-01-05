@@ -16,7 +16,7 @@ module Sentiment
       pn_lexicon:,
       wago_lexicon:,
       target_pos: DEFAULT_TARGET_POS,
-      negation_window: 2    # ←否定が何語後までに来たら反転するか
+      negation_window: 2    # 否定が何語後までに来たら反転するか
     )
       raise ArgumentError, "pn_lexicon is required" unless pn_lexicon
       raise ArgumentError, "wago_lexicon is required" unless wago_lexicon
@@ -30,44 +30,92 @@ module Sentiment
     #  tokens: [{ surface:, base:, pos: }, ...]
     def score_tokens(tokens)
       raise ArgumentError, "tokens must be an Array" unless tokens.is_a?(Array)
+      raise ArgumentError, "wago_lexicon must respond to score_terms" unless @wago.respond_to?(:score_terms)
 
-      # 1) スコア対象(名詞 形容詞 動詞 副詞)だけ抽出 / インデックス付き
-      scored_tokens = []
+
+      # スコア対象(名詞 形容詞 動詞 副詞)だけインデックスで抽出
+      # 目的：探索の開始位置を絞って無駄を減らす
+      target_idx = []
       tokens.each_with_index do |t, i|
         next unless @target_pos.include?(t[:pos])
-        scored_tokens << [ t, i ]
+        target_idx << i
       end
 
-      # hits : 評価語（1トークン1件）
-      # hits: { i(Integer) => { type:, i:, phrase:, raw:, applied:, negated: }, ... }
+      # 正規化済みの語（base優先、なければsurface）
+      # 目的：辞書フレーズを再現するために全トークンを正規化して配列に格納
+      norm_terms = tokens.map { |t| base_or_surface(t[:base], t[:surface]) }
+
+      # 各トークンが「どのhit（開始index）に含まれているか」
+      # 目的：フレーズの重複マッチ防止＆否定反転をフレーズ単位で適用するため
+      covered_by_hit = Array.new(tokens.length)
+
+      # フレーズごとの分析結果を格納するハッシュ
+      # hits: { start_i(Integer) => { type:, i:, phrase:, span:, raw:, applied:, negated: }, ... }
       hits = {}
 
-      # 2) pn: 名詞編
-      scored_tokens.each do  |t, i|
-        key = base_or_surface(t[:base], t[:surface])
+      # 3) wago: 用言編（n-gram: 1〜最大5語）
+      max_terms = @wago.respond_to?(:max_terms) ? @wago.max_terms : 5
+
+      target_idx.each do |i|
+        # すでにpn or 先行フレーズに含まれていたらスキップ
+        next if covered_by_hit[i]
+
+        matched = nil
+
+        # 最長一致（max_terms = 5）
+        max_terms.downto(1) do |len|
+          # 語彙の長さぶんのn-gramは作れない場合スキップ
+          next if i + len > norm_terms.length
+
+          # 既存ヒットと重なるn-gramは採用しない（重複カウント防止）
+          # 補足) .compact => 配列からnilを取り除いた配列を返す(nilのみでも.any?はtrueになる)
+          next if covered_by_hit.slice(i, len).compact.any?
+
+          # 正規化したフレーズでwago辞書でスコアリング
+          terms = norm_terms.slice(i, len)
+          s = @wago.score_terms(terms)
+          next if s.nil?
+
+          matched = [terms, s, len]
+
+          # より短い候補は試さずループを抜ける
+          break
+        end
+
+        # 辞書に当たってないならループを抜ける
+        next unless matched
+
+        # 多重代入（termなどを取り出す)
+        terms, s, len = matched
+        # 辞書キーと同じ形（空白区切り）にする
+        phrase = terms.join(" ")
+
+        # 分析結果を格納する
+        hits[i] = build_hit(type: :wago, i: i, phrase: phrase, score: s, span: len)
+        # covered_by_hitにインデックスでマーキングする
+        (i...(i + len)).each { |k| covered_by_hit[k] = i }
+      end
+
+      # 3) pn：名詞編
+      target_idx.each do |i|
+        # wagoフレーズに含まれている単語は二重カウントしない
+        next if covered_by_hit[i]
+
+        key = norm_terms[i]
         s = @pn.score(key)
         next if s.nil?
 
-        hits[i] = build_hit(type: :pn, i: i, phrase: key, score: s)
-      end
-
-      # 3) wago: 用言編
-      scored_tokens.each do |t, i|
-        next if hits.key?(i)
-        key = base_or_surface(t[:base], t[:surface])
-        s = @wago.score(key)
-        next if s.nil?
-
-        hits[i] = build_hit(type: :wago, i: i, phrase: key, score: s)
+        hits[i] = build_hit(type: :pn, i: i, phrase: key, score: s, span: 1)
+        covered_by_hit[i] = i
       end
 
       # 4) 否定反転：全トークンから否定語の位置を拾って、直前のヒット1個を反転
-      apply_negation!(hits, tokens)
+      apply_negation!(hits, tokens, covered_by_hit)
 
       # 5) 集計 ( スコア / 合計 / 平均値 )
       hit_values = hits.values
-
       scores = hit_values.map { |h| h[:applied].to_f }
+
       total = scores.sum
       mean = scores.empty? ? 0.0 : (total / scores.length)
 
@@ -86,18 +134,20 @@ module Sentiment
 
     private
 
-    def build_hit(type:, i:, phrase:, score:)
+    # 評価語
+    def build_hit(type:, i:, phrase:, score:, span: 1)
       {
         type:    type,     # 辞書タイプ(:pn or :wago)
-        i:       i,        # トークンインデックス
-        phrase:  phrase,   # 該当フレーズ
+        i:       i,        # 開始トークンインデックス
+        phrase:  phrase,   # 該当フレーズ（空白区切り）
+        span:    span,     # マッチ語数（1〜5）
         raw:     score,    # 元のスコア
         applied: score,    # 否定反転後のスコア
         negated: false     # 否定反転済みフラグ
       }
     end
 
-    # 正規化
+    # 正規化(base優先、なければsurfaceを使う)
     def base_or_surface(base, surface)
       base_str = base.to_s
       return surface.to_s if base_str.empty? || base_str == "*"
@@ -111,39 +161,46 @@ module Sentiment
       NEGATION_BASES.include?(base) || NEGATION_BASES.include?(surf)
     end
 
-    # 否定反転処理
+    # 否定反転処理（フレーズ対応）
     # 1. 文章の中で否定語（ない/ず/ません…）が出てくる場所を探す
-    # 2. 否定語の 直前か一つ飛んで前 *1にある評価語ヒットを探す
-    #   （ *1/ negation_window = 2）
-    # 3. 見つかった評価語のスコア applied を 符号反転する（+1→-1、-1→+1）
-
-    # hits: [{ type:, i:, phrase:, raw:, applied:, negated: }, ...]
+    # 2. 否定語の2語前までで「ヒットに属しているトークン」を探す。
+    # 3. そのヒットのappliedを反転、negatedにフラグを立てる
+    # 4. ただし否定語自体が「ヒットしたフレーズ内」に含まれる場合はスキップ
+    #
+    # hits: { start_i => { ... } }
     # tokens: [{ surface:, base:, pos: }, ...]
+    # covered_by_hit: token_index -> hit_start_index
 
-    def apply_negation!(hits, tokens)
-      # 評価後がなければ即終了
+    def apply_negation!(hits, tokens, covered_by_hit)
+      # ヒットがなければ終了
       return if hits.empty?
 
-      #
-      # hits_by_i = hits.to_h { |h| [h[:i], h] }
-
       tokens.each_with_index do |t, neg_i|
-        # tokensに否定語がなければここで終了
+        # 否定語がなければ終了
         next unless negation_token?(t)
 
+        # 否定語が「ヒットしたフレーズ内」なら、辞書側で意味づけ済みのため反転しない
+        next if covered_by_hit[neg_i]
+
         # 否定語が見つかったら、直前〜negation_window(=2)語前まで繰り返す
-        # 1.upto(2) do |d|
         # d = 1 のとき：直前の語
         # d = 2 のとき：一つ飛んで前の語
         1.upto(@negation_window) do |d|
-          idx = neg_i - d
-          break if idx < 0
+          candidate_i = neg_i - d
+          # 文頭を超えるので打ち切り
+          break if candidate_i < 0
 
-          # 評価語hitsがなければ、さらにdを増やす
-          h = hits[idx]
+          # 評価語のcovered_by_hitのインデックス番号を取得
+          hit_start = covered_by_hit[candidate_i]
+          # 評価語が取得できなければ次の候補へ
+          next if hit_start.nil?
+
+          # 評価語の本体を取り出す
+          h = hits[hit_start]
+          # covered_by_hit と hits がズレた時の保険
           next unless h
 
-          # 念のための二重反転防止
+          # 二重反転防止
           next if h[:negated]
 
           # 否定反転処理
