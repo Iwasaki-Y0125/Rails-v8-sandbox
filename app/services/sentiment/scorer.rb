@@ -16,7 +16,7 @@ module Sentiment
       pn_lexicon:,
       wago_lexicon:,
       target_pos: DEFAULT_TARGET_POS,
-      negation_window: 2    # 否定が何語後までに来たら反転するか
+      negation_window: 3    # 否定が何語後までに来たら反転するか
     )
       raise ArgumentError, "pn_lexicon is required" unless pn_lexicon
       raise ArgumentError, "wago_lexicon is required" unless wago_lexicon
@@ -158,7 +158,12 @@ module Sentiment
     def negation_token?(t)
       base = t[:base].to_s
       surf = t[:surface].to_s
+      pos  = t[:pos].to_s
+
       NEGATION_BASES.include?(base) || NEGATION_BASES.include?(surf)
+
+      # 「ん」は助動詞のときだけ否定扱い
+      (base == "ん" || surf == "ん") && pos == "助動詞"
     end
 
     # 否定反転処理（フレーズ対応）
@@ -182,7 +187,7 @@ module Sentiment
         # 否定語が「ヒットしたフレーズ内」なら、辞書側で意味づけ済みのため反転しない
         next if covered_by_hit[neg_i]
 
-        # 否定語が見つかったら、直前〜negation_window(=2)語前まで繰り返す
+        # 否定語が見つかったら、直前〜negation_window(=3)語前まで繰り返す
         # d = 1 のとき：直前の語
         # d = 2 のとき：一つ飛んで前の語
         1.upto(@negation_window) do |d|

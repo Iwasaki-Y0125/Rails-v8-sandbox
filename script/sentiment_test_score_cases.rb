@@ -48,9 +48,17 @@ samples.each do |text|
   tokens = analyzer.tokens(text)
   result = SENTIMENT_SCORER.score_tokens(tokens)
 
+  norm_terms = tokens.map do |t|
+    base = t[:base].to_s
+    surf = t[:surface].to_s
+    base.empty? || base == "*" ? surf : base
+  end
+
   puts "=================================================="
   puts "TEXT: #{text}"
   puts "TOKENS: " + tokens.map { |t| short_token(t) }.join(" | ")
+  puts "NORM_TERMS: " + norm_terms.join(" | ")
+  puts "USER.PN: \t" + norm_terms.join(" ")
 
   puts "SCORE: total=#{result[:total]} mean=#{result[:mean]} "\
        "matched=#{result.dig(:counts, :matched)} "\
