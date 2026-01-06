@@ -28,7 +28,7 @@ module Sentiment
       attr_reader :max_terms
 
       def initialize(path, max_terms: 5)
-        @path = path
+        @paths = Array(path)
         @max_terms = max_terms
         @dict_by_len = nil
       end
@@ -58,10 +58,10 @@ module Sentiment
       private
 
       def load_dict
-        raise "Wago#load_dict: wago lexicon not found: #{@path}" unless File.exist?(@path)
+        paths = @paths.select { |p| File.exist?(p) }
+        raise "Wago#load_dict: wago lexicon not found: #{@paths.join(', ')}" if paths.empty?
 
         h = Hash.new { |hh, k| hh[k] = {} }
-        # !todo コメントが長いのであとでdocsに逃がす
         # hh は「Hash of Hashes（ハッシュの中にハッシュ）」での通称的な引数
         # { |hh, k| ... } の...は 「入ってないキーを読んだ瞬間に呼ばれる処理」
         # hh[k] = {} とは「 h[3] = {} 」を作る
@@ -72,30 +72,32 @@ module Sentiment
         #               }
         # のようにハッシュの中にハッシュを格納できる
 
-        # File.foreach :ファイルを一行ずつ読み込んで繰り返し処理する
-        File.foreach(@path, encoding: "UTF-8") do |line|
-          # 改行、前後空白などを削除
-          line = line.strip
-          next if line.empty?
+        paths.each do |path|
+          # File.foreach :ファイルを一行ずつ読み込んで繰り返し処理する
+          File.foreach(path, encoding: "UTF-8") do |line|
+            # 改行、前後空白などを削除
+            line = line.strip
+            next if line.empty?
 
-          # wagoは「ラベル \t 表現」
-          label, expr_str = line.split("\t", 2)
-          next if label.nil? || expr_str.nil?
+            # wagoは「ラベル \t 表現」
+            label, expr_str = line.split("\t", 2)
+            next if label.nil? || expr_str.nil?
 
-          # スコア読み込み
-          score = LABEL_MAP[label]
-          next if score.nil?
+            # スコア読み込み
+            score = LABEL_MAP[label]
+            next if score.nil?
 
-          # 表現を空白で分解（wago側の空白はトークン境界として扱う）
-          expr = expr_str.strip.split(/\s+/)
-          next if expr.empty?
+            # 表現を空白で分解（wago側の空白はトークン境界として扱う）
+            expr = expr_str.strip.split(/\s+/)
+            next if expr.empty?
 
-          # 6語以上は除外
-          next if expr.length > @max_terms
+            # 6語以上は除外
+            next if expr.length > @max_terms
 
-          key = expr.join(" ")
-          # ||=でファイルの先頭側を優先する（先勝ち）
-          h[expr.length][key] ||= score
+            key = expr.join(" ")
+            # ||=でファイルの先頭側を優先する（先勝ち）
+            h[expr.length][key] ||= score
+          end
         end
 
         h

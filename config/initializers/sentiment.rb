@@ -9,18 +9,24 @@ require Rails.root.join("app/services/sentiment/scorer").to_s
 
 # ポジネガ辞書ディレクトリの指定
 sentiment_lex_dir = ENV.fetch("SENTIMENT_LEX_DIR", "/opt/sentiment_lex")
+
+# ビルド時にコンテナに配布(File.join)
 pn_path   = File.join(sentiment_lex_dir, "pn.csv.m3.120408.trim")
 wago_path = File.join(sentiment_lex_dir, "wago.121808.pn")
 
+# レポジトリ内で管理(Rails.)
+wago_user_path = Rails.root.join("sentiment_userdic/user.pn").to_s
+
 # 辞書オブジェクトを作る
-# services\sentiment\lexicon.rb.rb
+# app/services/sentiment/lexicon/pn.rb
+# app/services/sentiment/lexicon/wago.rb
 PN_LEX   = Sentiment::Lexicon::PN.new(pn_path)
-WAGO_LEX = Sentiment::Lexicon::Wago.new(wago_path, max_terms: 3)
+WAGO_LEX = Sentiment::Lexicon::Wago.new([wago_user_path, wago_path], max_terms: 5)
 
 # スコアラーを作る
-# services\sentiment\scorer.rb
+# app/services/sentiment/scorer.rb
 SENTIMENT_SCORER = Sentiment::Scorer.new(
   pn_lexicon: PN_LEX,
   wago_lexicon: WAGO_LEX,
-  negation_window: 2
+  negation_window: 3
 )
