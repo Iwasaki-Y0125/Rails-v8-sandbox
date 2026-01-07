@@ -41,7 +41,11 @@ ENV RAILS_ENV="production" \
     BUNDLE_WITHOUT="development test" \
     # 環境設定
     LANG=C.UTF-8 \
-    TZ=Asia/Tokyo
+    TZ=Asia/Tokyo \
+    # 辞書のパス指定(ビルド・ランタイム両方で同じパスを参照)
+    MECAB_DICDIR="/usr/local/lib/mecab/dic/mecab-ipadic-neologd" \
+    MECAB_USER_DIC="/usr/local/lib/mecab/dic/user.dic" \
+    SENTIMENT_LEX_DIR="/opt/sentiment_lex"
 
 ############################
 # 2) build（ビルド専用：Nodeあり）
@@ -174,6 +178,31 @@ RUN set -eux; \
     -f utf-8 -t utf-8 \
     /rails/mecab_userdic/user.csv
 
+# ====================
+#  日本語評価極性辞書（名詞編 + 用言編）の取得（local本番 build）
+#  参照: 東北大 乾・岡崎研究室 公開辞書
+# ====================
+RUN set -eux; \
+  mkdir -p "${SENTIMENT_LEX_DIR}"; \
+  for i in 1 2 3 4 5; do \
+    rm -f "${SENTIMENT_LEX_DIR}/wago.121808.pn" "${SENTIMENT_LEX_DIR}/pn.csv.m3.120408.trim"; \
+    if \
+      curl -fsSL --retry 3 --retry-delay 5 --retry-all-errors \
+        -o "${SENTIMENT_LEX_DIR}/wago.121808.pn" \
+        "https://www.cl.ecei.tohoku.ac.jp/resources/sent_lex/wago.121808.pn" \
+      && \
+      curl -fsSL --retry 3 --retry-delay 5 --retry-all-errors \
+        -o "${SENTIMENT_LEX_DIR}/pn.csv.m3.120408.trim" \
+        "https://www.cl.ecei.tohoku.ac.jp/resources/sent_lex/pn.csv.m3.120408.trim"; \
+    then \
+      break; \
+    fi; \
+    echo "Japanese Sentiment Dictionary download failed. retry=${i}" >&2; \
+    sleep $((i*10)); \
+  done; \
+  test -s "${SENTIMENT_LEX_DIR}/wago.121808.pn"; \
+  test -s "${SENTIMENT_LEX_DIR}/pn.csv.m3.120408.trim"
+
 # Install application gems
 COPY Gemfile Gemfile.lock ./
 RUN bundle install && \
@@ -226,6 +255,14 @@ COPY --from=build "${BUNDLE_PATH}" "${BUNDLE_PATH}"
 COPY --from=build /rails /rails
 
 # =========================================
+# ポジネガ辞書
+# buildで取得した辞書をruntimeへコピー
+COPY --from=build "${SENTIMENT_LEX_DIR}" "${SENTIMENT_LEX_DIR}"
+
+# 非root実行でも読めるように（念のため）
+RUN chmod -R a+rX "${SENTIMENT_LEX_DIR}"
+
+# =========================================
 #  ipadic-neologd + user.dic の配置
 
 # MeCab辞書の配置先を作成
@@ -238,8 +275,7 @@ COPY --from=build /opt/mecab-dic/mecab-ipadic-neologd \
 COPY --from=build /opt/mecab-dic/user.dic \
 /usr/local/lib/mecab/dic/user.dic
 
-# ipadic-neologd + user.dicの処理ここまで=========
-
+# =========================================
 
 # 非rootで動かす => 本番環境は一般ユーザーで動かす
 # rails(ID 1000)というLinuxグループを作る

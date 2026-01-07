@@ -60,72 +60,67 @@
         # 解析用のMeCabオブジェクトを初期化(引数でオプション指定可能)
         # 使いまわしすることでパフォーマンス向上
         def initialize(mecab_args: nil)
-            @nm = mecab_args ? Natto::MeCab.new(mecab_args) : Natto::MeCab.new
+          # 1) MeCab辞書ディレクトリ（NEologd）
+          # production: Dockerfileで配置した固定パス
+          # dev/test: ENV優先。未設定なら mecab-config --dicdir から推測
+          base_dic =
+            if Rails.env.production?
+              ENV.fetch("MECAB_DICDIR", "/usr/local/lib/mecab/dic/mecab-ipadic-neologd")
+            else
+              ENV["MECAB_DICDIR"].presence ||
+                File.join(`mecab-config --dicdir`.strip, "mecab-ipadic-neologd")
+            end
+          # File.join(a, b) は パスを安全に結合するRuby標準の関数。
+
+          # 2) ユーザー辞書 ( user.dic )
+          # production: Dockerfileで配置した固定パス
+          # dev/test: Rails.root 配下（開発環境で更新しやすくするため）
+          user_dic =
+            if Rails.env.production?
+              ENV.fetch("MECAB_USER_DIC", "/usr/local/lib/mecab/dic/user.dic")
+            else
+              Rails.root.join("mecab_userdic/user.dic").to_s
+            end
+
+          args = []
+          args << "-d #{base_dic}"
+          args << "-u #{user_dic}" if File.exist?(user_dic)
+          args << mecab_args if mecab_args
+
+          @nm = Natto::MeCab.new(args.join(" "))
         end
+
         # text -> token配列へ変換
         def tokens(input_text)
-        input_text = input_text.to_s
-        pre_mecab_text = strip_url(input_text)
+          input_text = input_text.to_s
+          pre_mecab_text = strip_url(input_text)
 
-        tokens = []
+          tokens = []
 
-        @nm.parse(pre_mecab_text) do |n|
+          @nm.parse(pre_mecab_text) do |n|
             next if n.is_eos?
             parts   = n.feature.split(",")
             tokens << {
-            surface:   n.surface,  # 表層形(実際の文字列)
-            feature:   n.feature,  # 生のfeature（デバッグ用）
-            pos:       parts[0],   # 品詞
-            pos1:      parts[1],   # 品詞細分類1
-            pos2:      parts[2],   # 品詞細分類2
-            pos3:      parts[3],   # 品詞細分類3
-            conj_type: parts[4],   # 活用型
-            conj_form: parts[5],   # 活用形
-            base:      parts[6],   # 原形
-            read:      parts[7],   # 読み
-            pron:      parts[8]   # 発音
+              surface:   n.surface,  # 表層形(実際の文字列)
+              feature:   n.feature,  # 生のfeature（デバッグ用）
+              pos:       parts[0],   # 品詞
+              pos1:      parts[1],   # 品詞細分類1
+              pos2:      parts[2],   # 品詞細分類2
+              pos3:      parts[3],   # 品詞細分類3
+              conj_type: parts[4],   # 活用型
+              conj_form: parts[5],   # 活用形
+              base:      parts[6],   # 原形
+              read:      parts[7],   # 読み
+              pron:      parts[8]   # 発音
             }
-        end
-        tokens
+          end
+          tokens
         end
 
         private
 
-        # URLは前処理で除去
         def strip_url(input_text)
-        input_text.gsub(%r{(?:https?://|www\.)\S+}, "")
-        end
-      end
-    end
-    ```
-
-    名詞抽出のサービスクラス作成
-
-    `app/services/mecab/noun_extractor.rb`
-
-    ```rb
-    # frozen_string_literal: true
-
-    module Mecab
-      class NounExtractor
-        def initialize(analyzer: Mecab::Analyzer.new)
-          @analyzer = analyzer
-        end
-
-        # text -> 名詞（表層形）配列を抽出
-        def call(text)
-          nouns = []
-
-          @analyzer.tokens(text).each do |t|
-            # 品詞が名詞ではなければ除外
-            next unless t[:pos] == "名詞"
-
-            surface = t[:surface]
-            # ひらがな/カタカナ/漢字が1文字も無いなら除外（絵文字・顔文字・記号対策）
-            next unless surface.match?(/[ぁ-んァ-ヶ一-龠]/)
-            nouns << surface
-          end
-          nouns
+          input_text.gsub(%r{(?:https?://|www\.)\S+}, "")
         end
       end
     end

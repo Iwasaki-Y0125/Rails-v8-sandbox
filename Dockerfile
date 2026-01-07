@@ -15,6 +15,13 @@
 # 辞書ファイルは build から COPY
 ############################
 
+# 2026-01-07追記
+############################
+# ポジネガ辞書導入メモ
+# build ステージで辞書をDLして /opt/sentiment_lex に配置
+# runtime ステージへ COPY（RailsはENVの固定パスを参照）
+############################
+
 # バージョン管理
 ARG RUBY_VERSION=3.4.8
 ARG NODE_MAJOR=22
@@ -31,7 +38,7 @@ ARG NODE_MAJOR
 # コンテナ内にrailsディレクトリを作り、以降の処理は/railsをカレントディレクトリとして扱う
 WORKDIR /rails
 
-    # Railsを本番環境として起動
+# Railsを本番環境として起動
 ENV RAILS_ENV="production" \
     # Gemfile.lockを正として、Gemfileと不整合があればエラーになる
     BUNDLE_DEPLOYMENT="1" \
@@ -40,7 +47,12 @@ ENV RAILS_ENV="production" \
     # developmentとtestグループのGemはインストールしない
     BUNDLE_WITHOUT="development test" \
     # natto が libmecab.so を見つけられるようにする
-    MECAB_PATH=/usr/lib/x86_64-linux-gnu/libmecab.so.2 \
+    MECAB_PATH="/usr/lib/x86_64-linux-gnu/libmecab.so.2" \
+    # MeCab辞書の固定パス（build/runtime/Railsで揃える）
+    MECAB_DICDIR="/usr/local/lib/mecab/dic/mecab-ipadic-neologd" \
+    MECAB_USER_DIC="/usr/local/lib/mecab/dic/user.dic" \
+    # ポジネガ辞書の固定パス（build/runtime/Railsで揃える）
+    SENTIMENT_LEX_DIR="/opt/sentiment_lex" \
     # 環境設定
     LANG=C.UTF-8 \
     TZ=Asia/Tokyo
@@ -172,6 +184,31 @@ RUN set -eux; \
     -f utf-8 -t utf-8 \
     /rails/mecab_userdic/user.csv
 
+# ====================
+#  日本語評価極性辞書（名詞編 + 用言編）の取得（prod build）
+#  参照: 東北大 乾・岡崎研究室 公開辞書
+# ====================
+RUN set -eux; \
+  mkdir -p "${SENTIMENT_LEX_DIR}"; \
+  for i in 1 2 3 4 5; do \
+    rm -f "${SENTIMENT_LEX_DIR}/wago.121808.pn" "${SENTIMENT_LEX_DIR}/pn.csv.m3.120408.trim"; \
+    if \
+      curl -fsSL --retry 3 --retry-delay 5 --retry-all-errors \
+        -o "${SENTIMENT_LEX_DIR}/wago.121808.pn" \
+        "https://www.cl.ecei.tohoku.ac.jp/resources/sent_lex/wago.121808.pn" \
+      && \
+      curl -fsSL --retry 3 --retry-delay 5 --retry-all-errors \
+        -o "${SENTIMENT_LEX_DIR}/pn.csv.m3.120408.trim" \
+        "https://www.cl.ecei.tohoku.ac.jp/resources/sent_lex/pn.csv.m3.120408.trim"; \
+    then \
+      break; \
+    fi; \
+    echo "Japanese Sentiment Dictionary download failed. retry=${i}" >&2; \
+    sleep $((i*10)); \
+  done; \
+  test -s "${SENTIMENT_LEX_DIR}/wago.121808.pn"; \
+  test -s "${SENTIMENT_LEX_DIR}/pn.csv.m3.120408.trim"
+
 # Install application gems
 COPY Gemfile Gemfile.lock ./
 RUN bundle install && \
@@ -196,7 +233,7 @@ RUN bundle exec bootsnap precompile app/ lib/
 # !↑がないと、本物のSECRET_KEY_BASEがビルド時に渡されて、ビルドログやイメージレイヤーに残り、秘密情報が漏洩するリスクがある
 RUN SECRET_KEY_BASE_DUMMY=1 ./bin/rails assets:precompile
 
-# Node.jsがビルト時に存在するかチェック
+# Node.jsがビルド時に存在するかチェック
 RUN node -v
 
 ############################
@@ -224,6 +261,11 @@ COPY --from=build "${BUNDLE_PATH}" "${BUNDLE_PATH}"
 COPY --from=build /rails /rails
 
 # =========================================
+# ポジネガ辞書
+COPY --from=build "${SENTIMENT_LEX_DIR}" "${SENTIMENT_LEX_DIR}"
+RUN chmod -R a+rX "${SENTIMENT_LEX_DIR}"
+
+# =========================================
 #  ipadic-neologd + user.dic の配置
 
 # MeCab辞書の配置先を作成
@@ -236,8 +278,7 @@ COPY --from=build /opt/mecab-dic/mecab-ipadic-neologd \
 COPY --from=build /opt/mecab-dic/user.dic \
 /usr/local/lib/mecab/dic/user.dic
 
-# ipadic-neologd + user.dicの処理ここまで=========
-
+# =========================================
 
 # 非rootで動かす => 本番環境は一般ユーザーで動かす
 # rails(ID 1000)というLinuxグループを作る

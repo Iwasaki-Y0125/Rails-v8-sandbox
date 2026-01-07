@@ -26,20 +26,27 @@ module Mecab
     # 解析用のMeCabオブジェクトを初期化(引数でオプション指定可能)
     # 使いまわしすることでパフォーマンス向上
     def initialize(mecab_args: nil)
-      # 1) MeCab辞書ディレクトリ（NEologd）を決める
-      # 優先: ENV（Docker側で固定パスに退避する想定）
-      # フォールバック: mecab-config --dicdir から推測
+      # 1) MeCab辞書ディレクトリ（NEologd）
+      # production: Dockerfileで配置した固定パス
+      # dev/test: ENV優先。未設定なら mecab-config --dicdir から推測
       base_dic =
-      ENV["MECAB_DICDIR"].presence ||
-      begin
-        dicdir = `mecab-config --dicdir`.strip
-        File.join(dicdir, "mecab-ipadic-neologd")
-      end
+        if Rails.env.production?
+          ENV.fetch("MECAB_DICDIR", "/usr/local/lib/mecab/dic/mecab-ipadic-neologd")
+        else
+          ENV["MECAB_DICDIR"].presence ||
+            File.join(`mecab-config --dicdir`.strip, "mecab-ipadic-neologd")
+        end
       # File.join(a, b) は パスを安全に結合するRuby標準の関数。
 
-      # Rails.root = Railsアプリのルートディレクトリ
-      # 例： /app/mecab_userdic/user.dic
-      user_dic = Rails.root.join("mecab_userdic/user.dic").to_s
+      # 2) ユーザー辞書 ( user.dic )
+      # production: Dockerfileで配置した固定パス
+      # dev/test: Rails.root 配下（開発環境で更新しやすくするため）
+      user_dic =
+        if Rails.env.production?
+          ENV.fetch("MECAB_USER_DIC", "/usr/local/lib/mecab/dic/user.dic")
+        else
+          Rails.root.join("mecab_userdic/user.dic").to_s
+        end
 
       args = []
       args << "-d #{base_dic}"
