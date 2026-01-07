@@ -1,4 +1,4 @@
-.PHONY: ch dev dev-build dev-build-nocache lprod lprod-build lprod-build-nocache down lp-down clean ps logs logs-web logs-db exec rails-c bundle-install license-finder g-migr db-migrate db-prepare db-reset db-first lg-migr ldb-migrate ldb-prepare ldb-reset g-con g-model rspec rubocop rubocop-a
+.PHONY: ch dev dev-restart dev-build dev-build-nocache lprod lprod-build lprod-build-nocache down lp-down clean ps logs logs-web logs-db exec rails-c bundle-install license-finder g-migr db-migrate db-prepare db-reset db-first lg-migr ldb-migrate ldb-prepare ldb-reset g-con g-model rspec rubocop rubocop-a
 
 # constants
 OPTS   := -e HOME=/tmp --user $(shell id -u):$(shell id -g)
@@ -30,6 +30,10 @@ ch:
 # 開発 - 起動
 dev:
 	$(DEV) up
+
+# 開発 - 再起動
+dev-restart:
+	$(DEV) restart web
 
 # 開発 - ビルド
 dev-build:
