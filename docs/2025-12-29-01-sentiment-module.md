@@ -61,7 +61,7 @@
 
 ### 2) web を再起動して反映
 ```sh
-docker compose --env-file .env.dev -f docker-compose.dev.yml restart web
+make dev-restart
 ```
 
 ### 3) 動作確認
