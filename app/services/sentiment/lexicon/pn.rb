@@ -5,7 +5,7 @@ module Sentiment
     # pn.csv.m3.120408.trim:
     # word \t (p|n|e|noise) \t category
     # 2列目は原則 p/n/e。ノイズも混ざる。
-    class PN
+    class Pn
       LABEL_MAP = { "p" => 1, "n" => -1, "e" => 0 }.freeze
 
       def initialize(path)

@@ -20,7 +20,7 @@ wago_user_path = Rails.root.join("sentiment_userdic/user.pn").to_s
 # 辞書オブジェクトを作る
 # app/services/sentiment/lexicon/pn.rb
 # app/services/sentiment/lexicon/wago.rb
-PN_LEX   = Sentiment::Lexicon::PN.new(pn_path)
+PN_LEX   = Sentiment::Lexicon::Pn.new(pn_path)
 WAGO_LEX = Sentiment::Lexicon::Wago.new([ wago_user_path, wago_path ], max_terms: 5)
 
 # スコアラーを作る
