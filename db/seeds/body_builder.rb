@@ -5,7 +5,7 @@ module Seeds
     INTROS = %w[今日は 最近 さっき 今朝 昼 仕事帰り 夜].freeze
     ACTIONS = %w[食べた 見た やった 買った 行った 作った 調べた].freeze
     MOODS = %w[よかった 最高 しんどい まあまあ 微妙 たのしい 眠い うざい].freeze
-    ENDS = ["。", "！", "…", "笑"].freeze
+    ENDS = [ "。", "！", "…", "笑" ].freeze
 
     TEMPLATES = [
       "%{intro}、%{topics}を%{action}%{end}",

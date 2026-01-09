@@ -18,14 +18,14 @@ module Seeds
       # ---------- config ----------
       terms_pool = Seeds::TermsData::ALL
       if limit_terms && limit_terms > 0
-        limit_terms = [limit_terms, terms_pool.size].min
+        limit_terms = [ limit_terms, terms_pool.size ].min
         terms_pool = terms_pool.sample(limit_terms)
       end
 
       raise "[seed] terms_pool empty" if terms_pool.empty?
 
-      max_terms = [max_terms, terms_pool.size].min
-      min_terms = [min_terms, max_terms].min
+      max_terms = [ max_terms, terms_pool.size ].min
+      min_terms = [ min_terms, max_terms ].min
 
       # ---------- users upsert ----------
       user_rows = (1..users).map do |i|
@@ -48,7 +48,7 @@ module Seeds
         # バッチ処理のsize設定
         # 例えば、posts=2500, batch_posts=1000の場合、
         # 最終回の500で処理が走るようにどちらかの最小値をとる
-        size = [batch_posts, posts - posts_inserted].min
+        size = [ batch_posts, posts - posts_inserted ].min
 
         rows = Array.new(size) do
           picked = terms_pool.sample(rand(min_terms..max_terms)).uniq
@@ -60,7 +60,7 @@ module Seeds
           {
             user_id: user_ids.sample,
             body: body,
-            sentiment_score: 0.0,   #いったん0.0であとでポジネガ分析する
+            sentiment_score: 0.0,   # いったん0.0であとでポジネガ分析する
             visibility: (rand < 0.9 ? "public" : "private"),
             reply_mode: (rand < 0.85 ? "open" : "limited"),
             created_at: now,
