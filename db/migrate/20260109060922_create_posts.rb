@@ -9,6 +9,6 @@ class CreatePosts < ActiveRecord::Migration[8.0]
 
       t.timestamps
     end
-    add_index :posts, [:visibility, :reply_mode]
+    add_index :posts, [ :visibility, :reply_mode ]
   end
 end

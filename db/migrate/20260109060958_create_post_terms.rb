@@ -7,9 +7,9 @@ class CreatePostTerms < ActiveRecord::Migration[8.0]
       t.timestamps
     end
     # 同じ投稿に同じtermを二重登録できないようにする,追加・削除・表示にも早い
-    add_index :post_terms, [:post_id, :term_id], unique: true
+    add_index :post_terms, [ :post_id, :term_id ], unique: true
 
     # 類似検索で「term→post」を引くので逆順も張る
-    add_index :post_terms, [:term_id, :post_id]
+    add_index :post_terms, [ :term_id, :post_id ]
   end
 end
