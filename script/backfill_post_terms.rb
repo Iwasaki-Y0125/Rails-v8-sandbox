@@ -3,11 +3,9 @@
 
 # ---------- 使用コマンド例 ----------
 # make exec
-# bin/rails db:seed
 
 # *試運転
 # DRY_RUN=1 BATCH=500 bin/rails runner script/backfill_post_terms.rb
-# 補足
 
 # *本番
 # BATCH=500 bin/rails runner script/backfill_post_terms.rb
