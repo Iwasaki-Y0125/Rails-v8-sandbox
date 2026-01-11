@@ -28,7 +28,7 @@ puts "[backfill] start BATCH=#{BATCH} FROM_ID=#{FROM_ID.inspect} TO_ID=#{TO_ID.i
 
 extractor = Mecab::NounExtractor.new
 
-scope = Post.all
+scope = Post.order(:id)
 scope = scope.where("id >= ?", FROM_ID) if FROM_ID
 scope = scope.where("id <= ?", TO_ID) if TO_ID
 

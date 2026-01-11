@@ -116,8 +116,10 @@ module Sentiment
       hit_values = hits.values
       scores = hit_values.map { |h| h[:applied].to_f }
 
-      total = scores.sum
-      mean = scores.empty? ? 0.0 : (total / scores.length)
+      polarity_scores = scores.reject { |x| x == 0.0 }  # 0(中立)を除外
+
+      total = polarity_scores.sum
+      mean = polarity_scores.empty? ? 0.0 : (total / polarity_scores.length)
 
       {
         total: total,
