@@ -70,9 +70,9 @@ begin
     end
   end
 
-# -------------------------
-# 5) 解析結果の保存
-# -------------------------
+  # -------------------------
+  # 5) 解析結果の保存
+  # -------------------------
   Post.transaction do
     post.update!(sentiment_score: score)
     Posts::TermsUpserter.call(post_id: post.id, terms: nouns)
