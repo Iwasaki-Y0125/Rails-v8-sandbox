@@ -23,6 +23,10 @@ require "natto"
 
 module Mecab
   class Analyzer
+    def self.call(text, **kwargs)
+      new(**kwargs).tokens(text)
+    end
+
     # 解析用のMeCabオブジェクトを初期化(引数でオプション指定可能)
     # 使いまわしすることでパフォーマンス向上
     def initialize(mecab_args: nil)

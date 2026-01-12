@@ -10,9 +10,18 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_09_060958) do
+ActiveRecord::Schema[8.0].define(version: 2026_01_12_055359) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+
+  create_table "matching_excluded_terms", force: :cascade do |t|
+    t.text "term", null: false
+    t.boolean "enabled", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["enabled"], name: "index_matching_excluded_terms_on_enabled"
+    t.index ["term"], name: "index_matching_excluded_terms_on_term", unique: true
+  end
 
   create_table "post_terms", force: :cascade do |t|
     t.bigint "post_id", null: false
