@@ -2,13 +2,11 @@
 
 # 使い方:
 # DEBUG=1 TEXT="カレー食べたい。最近仕事が忙しい" bin/rails runner script/check_similar_posts.rb
-#
-#   1) 投稿作成
-#   2) 形態素解析
-#   3) 名詞抽出
-#   4) ポジネガ分析
-#   5) 解析結果の保存
-#   6) 類似投稿検索 => レコメンド表示
+
+# 入力:
+#   TEXT  : 投稿本文（最大140文字）
+#   LIMIT : 類似投稿の表示件数（省略時10）
+#   DEBUG : 1 のとき詳細ログ（tokens/nouns/hits）を出す
 
 MAX_LEN = 140
 DEFAULT_SIMILAR_POSTS_LIMIT = 10
@@ -28,71 +26,52 @@ post = Post.create!(user_id: user.id, body: text)
 
 puts "[created] post_id=#{post.id} user_id=#{user.id} body=#{post.body.inspect}"
 
+# -------------------------
+# 2) 解析＆保存（サービスクラスに委譲）
+# -------------------------
 begin
-  # -------------------------
-  # 2) 形態素解析
-  # -------------------------
-  analyzer = Mecab::Analyzer.new
-  tokens = analyzer.tokens(text)
-
-  puts "[tokens] size=#{tokens.size}" if debug
-
-  # -------------------------
-  # 3) 名詞抽出
-  # -------------------------
-  nouns = Mecab::NounExtractor.new(analyzer: analyzer).call(text)
-  nouns = nouns.map(&:to_s).map(&:strip).reject(&:empty?).uniq
-
-  puts "[nouns] count=#{nouns.size}" if debug
-  puts "  nouns=#{nouns.join(', ')}" if debug
-
-  # -------------------------
-  # 4) ポジネガ分析
-  # -------------------------
-  result = SENTIMENT_SCORER.score_tokens(tokens)
-  score = result[:mean].to_f
+  r = Posts::AnalyzePost.call(post_id: post.id)
 
   if debug
+    tokens = r[:tokens] || []
+    nouns  = r[:nouns]  || []
+    result = r[:sentiment] || {}
+    score  = r[:score].to_f
+
+    puts "[tokens] size=#{tokens.size}"
+    puts "[nouns] count=#{nouns.size}"
+    puts "  nouns=#{nouns.join(', ')}"
+
     counts = result[:counts] || {}
     puts "[sentiment] mean=#{score} total=#{result[:total]} matched=#{counts[:matched]} "\
-        "pos=#{counts[:pos]} neg=#{counts[:neg]} neu=#{counts[:neu]}"
+          "pos=#{counts[:pos]} neg=#{counts[:neg]} neu=#{counts[:neu]}"
 
     puts "-- HITS (top 10)"
     (result[:hits] || []).first(10).each do |h|
       puts "  [i=#{h[:i]}] type=#{h[:type]} phrase=#{h[:phrase]} "\
-          "raw=#{h[:raw]} applied=#{h[:applied]} negated=#{h[:negated]}"
+            "raw=#{h[:raw]} applied=#{h[:applied]} negated=#{h[:negated]}"
     end
 
     puts "-- HITS (last 5)"
     (result[:hits] || []).last(5).each do |h|
-    puts "  [i=#{h[:i]}] type=#{h[:type]} phrase=#{h[:phrase]} "\
-          "raw=#{h[:raw]} applied=#{h[:applied]} negated=#{h[:negated]}"
+      puts "  [i=#{h[:i]}] type=#{h[:type]} phrase=#{h[:phrase]} "\
+            "raw=#{h[:raw]} applied=#{h[:applied]} negated=#{h[:negated]}"
     end
   end
 
-  # -------------------------
-  # 5) 解析結果の保存
-  # -------------------------
-  Post.transaction do
-    post.update!(sentiment_score: score)
-    Posts::TermsUpserter.call(post_id: post.id, terms: nouns)
-  end
-
-  puts "[saved] score=#{post.reload.sentiment_score} post_terms=#{PostTerm.where(post_id: post.id).count}"
-
+  puts "[saved] score=#{Post.find(post.id).sentiment_score} post_terms=#{PostTerm.where(post_id: post.id).count}"
 rescue => e
   puts "[analysis] ERROR: #{e.class}: #{e.message}"
   puts "[analysis] post remains: post_id=#{post.id} sentiment_score=#{post.sentiment_score}"
 end
 
 # -------------------------
-# 6) 類似投稿検索 => レコメンド表示
+# 3) 類似投稿検索 => レコメンド表示
 # -------------------------
-results = Posts::SimilarPostsQuery.call(post_id: post.id, limit: limit)
+relation = Posts::SimilarPostsQuery.call(post_id: post.id, limit: limit).load
+puts "\n[similar_posts] count=#{relation.size}"
 
-puts "\n[similar_posts] count=#{results.length}"
-
-results.each_with_index do |p, i|
+relation.each_with_index do |p, i|
   overlap = p.attributes["overlap"]
   puts format(
     "  #%02d id=%s overlap=%s score=%s created_at=%s body=%s",
