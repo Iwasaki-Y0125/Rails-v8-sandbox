@@ -122,7 +122,8 @@ rails-c:
 
 # Gemインストール
 bundle-install:
-	$(DEV) exec $(OPTS) web sh -lc 'cd /app && BUNDLE_GEMFILE=/app/Gemfile bundle install'
+	$(DEV) exec -w /app -e HOME=/tmp --user $(shell id -u):$(shell id -g) web \
+			sh -lc 'bundle config set --local path /usr/local/bundle && BUNDLE_GEMFILE=/app/Gemfile bundle install'
 
 # ライセンスレポート発行
 license-report-md:
