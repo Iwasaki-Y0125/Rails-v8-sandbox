@@ -1,0 +1,30 @@
+current directory: /app/vendor/bundle/ruby/3.4.0/gems/json-2.18.0/ext/json/ext/parser
+/usr/local/bin/ruby extconf.rb
+checking for rb_enc_interned_str() in ruby/encoding.h... yes
+checking for rb_str_to_interned_str() in ruby.h... yes
+checking for rb_hash_new_capa() in ruby.h... yes
+checking for rb_hash_bulk_insert() in ruby.h... yes
+checking for whether -std=c99 is accepted as CFLAGS... yes
+checking for x86intrin.h... yes
+checking for cpuid.h... yes
+creating Makefile
+
+current directory: /app/vendor/bundle/ruby/3.4.0/gems/json-2.18.0/ext/json/ext/parser
+make DESTDIR\= sitearchdir\=./.gem.20260114-122-9jitr6 sitelibdir\=./.gem.20260114-122-9jitr6 clean
+
+current directory: /app/vendor/bundle/ruby/3.4.0/gems/json-2.18.0/ext/json/ext/parser
+make DESTDIR\= sitearchdir\=./.gem.20260114-122-9jitr6 sitelibdir\=./.gem.20260114-122-9jitr6
+compiling parser.c
+linking shared-object json/ext/parser.so
+
+current directory: /app/vendor/bundle/ruby/3.4.0/gems/json-2.18.0/ext/json/ext/parser
+make DESTDIR\= sitearchdir\=./.gem.20260114-122-9jitr6 sitelibdir\=./.gem.20260114-122-9jitr6 install
+make: Warning: File 'Makefile' has modification time 16 s in the future
+linking shared-object json/ext/parser.so
+/usr/bin/install -c -m 0755 parser.so ./.gem.20260114-122-9jitr6/json/ext
+make: warning:  Clock skew detected.  Your build may be incomplete.
+
+current directory: /app/vendor/bundle/ruby/3.4.0/gems/json-2.18.0/ext/json/ext/parser
+make DESTDIR\= sitearchdir\=./.gem.20260114-122-9jitr6 sitelibdir\=./.gem.20260114-122-9jitr6 clean
+make: Warning: File 'Makefile' has modification time 16 s in the future
+make: warning:  Clock skew detected.  Your build may be incomplete.

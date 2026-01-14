@@ -1,0 +1,23 @@
+current directory: /app/vendor/bundle/ruby/3.4.0/gems/bindex-0.8.1/ext/skiptrace
+/usr/local/bin/ruby extconf.rb
+creating Makefile
+
+current directory: /app/vendor/bundle/ruby/3.4.0/gems/bindex-0.8.1/ext/skiptrace
+make DESTDIR\= sitearchdir\=./.gem.20260114-122-b4m8gt sitelibdir\=./.gem.20260114-122-b4m8gt clean
+
+current directory: /app/vendor/bundle/ruby/3.4.0/gems/bindex-0.8.1/ext/skiptrace
+make DESTDIR\= sitearchdir\=./.gem.20260114-122-b4m8gt sitelibdir\=./.gem.20260114-122-b4m8gt
+compiling cruby.c
+linking shared-object skiptrace/internal/cruby.so
+
+current directory: /app/vendor/bundle/ruby/3.4.0/gems/bindex-0.8.1/ext/skiptrace
+make DESTDIR\= sitearchdir\=./.gem.20260114-122-b4m8gt sitelibdir\=./.gem.20260114-122-b4m8gt install
+make: Warning: File 'Makefile' has modification time 17 s in the future
+linking shared-object skiptrace/internal/cruby.so
+/usr/bin/install -c -m 0755 cruby.so ./.gem.20260114-122-b4m8gt/skiptrace/internal
+make: warning:  Clock skew detected.  Your build may be incomplete.
+
+current directory: /app/vendor/bundle/ruby/3.4.0/gems/bindex-0.8.1/ext/skiptrace
+make DESTDIR\= sitearchdir\=./.gem.20260114-122-b4m8gt sitelibdir\=./.gem.20260114-122-b4m8gt clean
+make: Warning: File 'Makefile' has modification time 17 s in the future
+make: warning:  Clock skew detected.  Your build may be incomplete.
