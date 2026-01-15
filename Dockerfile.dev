@@ -158,11 +158,11 @@ RUN set -eux; \
 
 
 # Bundlerの保存先を確保（非root実行でも書けるようにする）
-RUN mkdir -p /usr/local/bundle \
-    && chown -R 1000:1000 /usr/local/bundle
-
-ENV BUNDLE_PATH=/usr/local/bundle \
+ENV BUNDLE_PATH=/app/vendor/bundle \
     BUNDLE_GEMFILE=/app/Gemfile
+
+RUN mkdir -p /app/vendor/bundle \
+    && chown -R 1000:1000 /app/vendor/bundle
 
 # 作業ディレクトリの明示（Railsプロジェクトのルート）
 WORKDIR /app

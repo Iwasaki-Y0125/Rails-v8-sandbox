@@ -1,0 +1,17 @@
+<h1>Root Test Page</h1>
+
+<p>It works!</p>
+
+<ul>
+  <li>Rails.env: <%= Rails.env %></li>
+  <li>Time: <%= Time.current %></li>
+  <li>Current user: <%= Current.user&.id || "none" %></li>
+  <li>Current session: <%= Current.session&.id || "none" %></li>
+</ul>
+
+<p>
+  <%= link_to "Login", new_session_path %> |
+  <%= link_to "Logout", session_path, data: { turbo_method: :delete } %> |
+  <%= link_to "Password reset", new_password_path %> |
+  <%= link_to "Letter opener", "/letter_opener" if Rails.env.development? %>
+</p>
