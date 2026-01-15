@@ -33,9 +33,9 @@ services:
       - .:/app
 
       # バンドルデータの永続化
-      # バンドルの中身をコンテナ外の管理領域に保存する
+      #  Bundler の保存先（BUNDLE_PATH）を named volume にして、コンテナ削除でも gems を保持する
       # !これがないとコンテナを消すとバンドルの中身も消えエラーになる
-      - bundle_data:/usr/local/bundle
+      - bundle_data:/app/vendor/bundle
 
       # Node.js用
       # DausyUIを使用したいため
