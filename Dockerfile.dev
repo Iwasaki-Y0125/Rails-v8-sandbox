@@ -161,7 +161,8 @@ RUN set -eux; \
 RUN mkdir -p /usr/local/bundle \
     && chown -R 1000:1000 /usr/local/bundle
 
-ENV BUNDLE_PATH=/usr/local/bundle
+ENV BUNDLE_PATH=/usr/local/bundle \
+    BUNDLE_GEMFILE=/app/Gemfile
 
 # 作業ディレクトリの明示（Railsプロジェクトのルート）
 WORKDIR /app
