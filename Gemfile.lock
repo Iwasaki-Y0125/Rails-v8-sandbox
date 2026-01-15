@@ -176,8 +176,7 @@ GEM
     marcel (1.1.0)
     matrix (0.4.3)
     mini_mime (1.1.5)
-    minitest (6.0.0)
-      prism (~> 1.5)
+    minitest (5.27.0)
     msgpack (1.8.0)
     natto (1.2.0)
       ffi (>= 1.9.0)
@@ -404,6 +403,7 @@ DEPENDENCIES
   jbuilder
   kamal
   letter_opener_web
+  minitest (< 6)
   natto
   pg (~> 1.1)
   propshaft

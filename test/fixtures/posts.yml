@@ -1,15 +1,6 @@
-# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
-
-one:
-  user: one
-  body: MyText
-  sentiment_score: 1.5
-  visibility: MyString
-  reply_mode: MyString
-
-two:
-  user: two
-  body: MyText
-  sentiment_score: 1.5
-  visibility: MyString
-  reply_mode: MyString
+post_1:
+  user: test_user
+  body: "こんにちは"
+  sentiment_score: 0.0
+  visibility: public
+  reply_mode: open

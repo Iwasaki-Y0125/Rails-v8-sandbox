@@ -80,4 +80,6 @@ group :test do
   # Use system testing [https://guides.rubyonrails.org/testing.html#system-testing]
   gem "capybara"
   gem "selenium-webdriver"
+  # Rails 8.0.4 の test runner と Minitest 6 が噛み合わないため一時固定
+  gem "minitest", "< 6"
 end

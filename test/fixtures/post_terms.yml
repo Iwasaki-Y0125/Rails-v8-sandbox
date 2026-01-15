@@ -1,9 +1,3 @@
-# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
-
-one:
-  post: one
-  term: one
-
-two:
-  post: two
-  term: two
+post_1_term_hello:
+  post: post_1
+  term: term_hello
