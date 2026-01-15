@@ -14,7 +14,7 @@ make exec
 bin/rails generate authentication
 bin/rails db:migrate
 ```
-補足: 
+補足: 使用しないpassword系も生成されるが、adminはpassword認証にするなどの変更に備えて機能自体は残し、現時点では導線からは外す運用にする
 
 ## Step 2. `users`テーブルに`nonce`を追加（使い回し防止）
 ```bash

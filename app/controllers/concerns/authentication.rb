@@ -13,7 +13,7 @@ module Authentication
     # デフォルトで全アクションをログイン必須にする
     before_action :require_authentication
 
-     # view から `authenticated?` を呼べるようにする（ヘッダ表示などに使う）
+    # view から `authenticated?` を呼べるようにする（ヘッダ表示などに使う）
     helper_method :authenticated?
   end
 
@@ -26,7 +26,7 @@ module Authentication
   end
 
   private
-     # ログイン済みか？（必要ならcookieからsessionを復元する）
+    # ログイン済みか？（必要ならcookieからsessionを復元する）
     def authenticated?
       resume_session
     end

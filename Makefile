@@ -1,7 +1,15 @@
 .PHONY: ch dev dev-restart dev-build dev-build-nocache lprod lprod-build lprod-build-nocache down lp-down clean ps logs logs-web logs-db exec rails-c bundle-install license-finder g-migr db-migrate db-prepare db-reset db-first lg-migr ldb-migrate ldb-prepare ldb-reset g-con g-model rspec rubocop rubocop-a
 
 # constants
-OPTS   := -e HOME=/tmp --user $(shell id -u):$(shell id -g)
+# 共通: 環境変数 + 非root実行
+OPTS      := -e HOME=/tmp --user $(shell id -u):$(shell id -g)
+
+# exec 用: /app を起点にする（Gemfile迷子防止）
+EXEC_OPTS := -w /app $(OPTS)
+
+# run 用: workdir は --workdir を使う（docker compose run の正式オプション）
+RUN_OPTS  := --workdir /app $(OPTS)
+
 DEV    := docker compose --env-file .env.dev -f docker-compose.dev.yml
 LPROD  := docker compose --env-file .env.prod.local -f docker-compose.localprod.yml
 RAILS  := bin/rails
@@ -111,23 +119,22 @@ logs-db:
 
 # bash起動
 exec:
-	$(DEV) exec $(OPTS) web bash
+	$(DEV) exec $(EXEC_OPTS) web bash
 
 lprod-exec:
-	$(LPROD) exec $(OPTS) web bash
+	$(LPROD) exec $(EXEC_OPTS) web bash
 
 # railsコンソール起動
 rails-c:
-	$(DEV) exec $(OPTS) web $(RAILS) c
+	$(DEV) exec $(EXEC_OPTS) web $(RAILS) c
 
 # Gemインストール
 bundle-install:
-	$(DEV) exec -w /app -e HOME=/tmp --user $(shell id -u):$(shell id -g) web \
-			sh -lc 'bundle config set --local path /usr/local/bundle && BUNDLE_GEMFILE=/app/Gemfile bundle install'
+	$(DEV) exec $(EXEC_OPTS) web sh -lc 'bundle install'
 
 # ライセンスレポート発行
 license-report-md:
-	$(DEV) exec $(OPTS) web $(BUNDLE) ruby script/licenses/gems_md_report.rb > docs/licenses/gems.md
+	$(DEV) exec $(EXEC_OPTS) web $(BUNDLE) ruby script/licenses/gems_md_report.rb > docs/licenses/gems.md
 
 # ====================
 # DB操作(開発用)
@@ -136,19 +143,19 @@ license-report-md:
 # マイグレーションファイル生成
 # make g-migr G="AddIndexToPosts"
 g-migr:
-	$(DEV) run --rm $(OPTS) web $(RAILS) g migration $(G)
+	$(DEV) run --rm $(RUN_OPTS) web $(RAILS) g migration $(G)
 
 # マイグレーション
 db-migrate:
-	$(DEV) exec $(OPTS) web $(RAILS) db:migrate
+	$(DEV) exec $(EXEC_OPTS) web $(RAILS) db:migrate
 
 # 初回マイグレーション
 db-prepare:
-	$(DEV) exec $(OPTS) web $(RAILS) db:prepare
+	$(DEV) exec $(EXEC_OPTS) web $(RAILS) db:prepare
 
 # DB全消し（開発専用）
 db-reset:
-	$(DEV) exec $(OPTS) web $(RAILS) db:drop db:create db:migrate
+	$(DEV) exec $(EXEC_OPTS) web $(RAILS) db:drop db:create db:migrate
 
 # ====================
 # DB操作(ローカル本番用)
@@ -157,19 +164,19 @@ db-reset:
 # マイグレーションファイル生成
 # make g-migr G="AddIndexToPosts"
 lg-migr:
-	$(LPROD) run --rm $(OPTS) web $(RAILS) g migration $(G)
+	$(LPROD) run --rm $(RUN_OPTS) web $(RAILS) g migration $(G)
 
 # マイグレーション
 ldb-migrate:
-	$(LPROD) exec $(OPTS) web $(RAILS) db:migrate
+	$(LPROD) exec $(EXEC_OPTS) web $(RAILS) db:migrate
 
 # 初回マイグレーション
 ldb-prepare:
-	$(LPROD) exec $(OPTS) web $(RAILS) db:prepare
+	$(LPROD) exec $(EXEC_OPTS) web $(RAILS) db:prepare
 
 # DB全消し（開発専用）
 ldb-reset:
-	$(LPROD) exec $(OPTS) web $(RAILS) db:drop db:create db:migrate
+	$(LPROD) exec $(EXEC_OPTS) web $(RAILS) db:drop db:create db:migrate
 
 
 # ====================
@@ -179,12 +186,12 @@ ldb-reset:
 # コントローラ生成
 # make g-con G="Posts index show"
 g-con:
-	$(DEV) run --rm $(OPTS) web $(RAILS) g controller $(G)
+	$(DEV) run --rm $(RUN_OPTS) web $(RAILS) g controller $(G)
 
 # モデル生成
 # make g-model G="Post title:string body:text"
 g-model:
-	$(DEV) run --rm $(OPTS) web $(RAILS) g model $(G)
+	$(DEV) run --rm $(RUN_OPTS) web $(RAILS) g model $(G)
 
 
 # ====================
@@ -193,12 +200,12 @@ g-model:
 
 # Rspecテスト
 rspec:
-	$(DEV) exec $(OPTS) web $(BUNDLE) rspec
+	$(DEV) exec $(EXEC_OPTS) web $(BUNDLE) rspec
 
 # Rubocop実行
 rubocop:
-	$(DEV) exec $(OPTS) web $(BUNDLE) rubocop
+	$(DEV) exec $(EXEC_OPTS) web $(BUNDLE) rubocop
 
 # Rubocop自動修正
 rubocop-a:
-	$(DEV) exec $(OPTS) web $(BUNDLE) rubocop -a
+	$(DEV) exec $(EXEC_OPTS) web $(BUNDLE) rubocop -a
