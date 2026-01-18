@@ -9,7 +9,7 @@ require_relative "./_bench_logger"
 
 N     = (ENV["N"] || 200).to_i
 WARM  = (ENV["WARM"] || 20).to_i
-TEXT  = (ENV["TEXT"] || "今日は映画を観た。カレー食べたい。仕事が忙しい。").to_s
+TEXT  = (ENV["TEXT"] || "カレー食べたい。仕事が忙しい。").to_s
 
 def ms(sec) = (sec * 1000.0)
 

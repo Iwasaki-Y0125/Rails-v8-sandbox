@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # 使い方:
-# DEBUG=1 TEXT="カレー食べたい。最近仕事が忙しい" bin/rails runner script/check_similar_posts.rb
+# DEBUG=1 TEXT="アマプラ見た" bin/rails runner script/check_similar_posts.rb
 
 # 入力:
 #   TEXT  : 投稿本文（最大140文字）
