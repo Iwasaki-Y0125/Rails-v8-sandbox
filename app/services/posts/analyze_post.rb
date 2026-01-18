@@ -24,7 +24,7 @@ module Posts
         Posts::TermsUpserter.call(post_id: post.id, terms: nouns)
       end
 
-      { post: post, score: score, nouns: nouns, sentiment: result }
+      { post: post, score: score, nouns: nouns, tokens: tokens, sentiment: result }
     end
   end
 end
